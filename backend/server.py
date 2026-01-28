@@ -1205,97 +1205,155 @@ async def get_exercise_history(
 
 @api_router.post("/admin/seed-exercises")
 async def seed_exercises():
-    """Seed the exercise database with the encyclopedia data"""
+    """Seed the exercise database with the complete encyclopedia data from Excel"""
     # Check if already seeded
     count = await db.exercises.count_documents({})
     if count > 0:
         return {"message": f"Database already has {count} exercises"}
     
-    # Exercise data from the encyclopedia
-    exercises_data = [
-        {"muscle": "Espalda", "name": "Pull-up", "exercise_type": "Tirón vertical", "pattern": "Peso corporal", "equipment": "Barra fija/anillas", "subtype": "Prono, ancho, medio, estrecho; sin lastre"},
-        {"muscle": "Espalda", "name": "Weighted pull-up", "exercise_type": "Tirón vertical", "pattern": "Peso corporal + lastre", "equipment": "Cinturón, chaleco", "subtype": "Igual que pull-up con peso adicional"},
-        {"muscle": "Espalda", "name": "Chin-up", "exercise_type": "Tirón vertical", "pattern": "Peso corporal", "equipment": "Barra fija", "subtype": "Supino, ancho/estrecho"},
-        {"muscle": "Espalda", "name": "Lat pulldown wide grip", "exercise_type": "Tirón vertical", "pattern": "Polea", "equipment": "Lat machine", "subtype": "Agarres ancho, prono"},
-        {"muscle": "Espalda", "name": "Lat pulldown close/neutral", "exercise_type": "Tirón vertical", "pattern": "Polea", "equipment": "Lat machine", "subtype": "Barra V/neutral"},
-        {"muscle": "Espalda", "name": "Barbell bent-over row", "exercise_type": "Tirón horizontal", "pattern": "Barra", "equipment": "Libre", "subtype": "Tronco inclinado, agarre prono"},
-        {"muscle": "Espalda", "name": "One-arm dumbbell row", "exercise_type": "Tirón horizontal", "pattern": "Mancuerna", "equipment": "Banco", "subtype": "Clásico en banco con apoyo"},
-        {"muscle": "Espalda", "name": "Seated cable row (V-bar)", "exercise_type": "Tirón horizontal", "pattern": "Polea", "equipment": "Polea baja", "subtype": "Agarre neutro estrecho"},
-        {"muscle": "Espalda", "name": "Deadlift convencional", "exercise_type": "Bisagra", "pattern": "Barra", "equipment": "Libre", "subtype": "Dorsales, erectores, trapecio"},
-        {"muscle": "Espalda", "name": "Face pull", "exercise_type": "Tirón alto", "pattern": "Polea", "equipment": "Polea media/alta", "subtype": "Deltoide posterior + trapecio"},
-        
-        {"muscle": "Pecho", "name": "Bench press (flat)", "exercise_type": "Empuje horizontal", "pattern": "Barra", "equipment": "Banco plano", "subtype": "Pectoral esternal (medio/inferior)"},
-        {"muscle": "Pecho", "name": "Incline bench press", "exercise_type": "Empuje horizontal inclinado", "pattern": "Barra", "equipment": "Banco inclinado", "subtype": "Énfasis pectoral superior (clavicular)"},
-        {"muscle": "Pecho", "name": "Decline bench press", "exercise_type": "Empuje horizontal declinado", "pattern": "Barra", "equipment": "Banco declinado", "subtype": "Más pectoral inferior"},
-        {"muscle": "Pecho", "name": "DB bench press (flat)", "exercise_type": "Empuje horizontal", "pattern": "Mancuernas", "equipment": "Banco plano", "subtype": "Mayor rango que barra"},
-        {"muscle": "Pecho", "name": "DB incline bench press", "exercise_type": "Empuje horizontal inclinado", "pattern": "Mancuernas", "equipment": "Banco inclinado", "subtype": "Pectoral superior"},
-        {"muscle": "Pecho", "name": "Push-up", "exercise_type": "Empuje horizontal", "pattern": "Peso corporal", "equipment": "Suelo", "subtype": "Clásico; medio/inferior según ángulo"},
-        {"muscle": "Pecho", "name": "Chest dip", "exercise_type": "Empuje vertical / diagonal", "pattern": "Peso corporal", "equipment": "Barras paralelas", "subtype": "Inclinando torso adelante, énfasis pectoral inferior"},
-        {"muscle": "Pecho", "name": "Cable crossover (classic)", "exercise_type": "Apertura horizontal", "pattern": "Polea", "equipment": "Dos poleas", "subtype": "Desde alto a bajo o medio; muy usado"},
-        {"muscle": "Pecho", "name": "DB fly (flat)", "exercise_type": "Apertura horizontal", "pattern": "Mancuernas", "equipment": "Banco plano", "subtype": "Estiramiento pec esternal"},
-        {"muscle": "Pecho", "name": "Pec deck fly (machine)", "exercise_type": "Apertura horizontal", "pattern": "Máquina", "equipment": "Pec-deck", "subtype": "Aislante de pecho"},
-        
-        {"muscle": "Hombro", "name": "Barbell overhead press (standing)", "exercise_type": "Empuje vertical", "pattern": "Barra", "equipment": "Libre", "subtype": "Press militar clásico"},
-        {"muscle": "Hombro", "name": "Seated DB shoulder press", "exercise_type": "Empuje vertical", "pattern": "Mancuernas", "equipment": "Sentado", "subtype": "Variante muy usada"},
-        {"muscle": "Hombro", "name": "Arnold press (DB)", "exercise_type": "Empuje vertical", "pattern": "Mancuernas", "equipment": "Sentado/de pie", "subtype": "Rotación interna-externa, mucho anterior"},
-        {"muscle": "Hombro", "name": "DB lateral raise (de pie)", "exercise_type": "Abducción", "pattern": "Mancuernas", "equipment": "Libre", "subtype": "Deltoide lateral"},
-        {"muscle": "Hombro", "name": "DB front raise", "exercise_type": "Elevación frontal", "pattern": "Mancuernas", "equipment": "Libre", "subtype": "Deltoide anterior"},
-        {"muscle": "Hombro", "name": "DB rear delt fly (bent-over)", "exercise_type": "Abducción horizontal", "pattern": "Mancuernas", "equipment": "Tronco inclinado", "subtype": "Clásico posterior"},
-        {"muscle": "Hombro", "name": "Cable lateral raise (low pulley)", "exercise_type": "Abducción", "pattern": "Polea", "equipment": "Baja", "subtype": "Excelente tensión continua"},
-        
-        {"muscle": "Bíceps", "name": "Barbell curl (recta)", "exercise_type": "Flexión codo", "pattern": "Barra", "equipment": "Libre", "subtype": "Curl clásico con barra recta"},
-        {"muscle": "Bíceps", "name": "EZ bar curl", "exercise_type": "Flexión codo", "pattern": "Barra EZ", "equipment": "Libre", "subtype": "Mismas mecánicas, menos estrés muñeca"},
-        {"muscle": "Bíceps", "name": "Standing DB curl", "exercise_type": "Flexión codo", "pattern": "Mancuernas", "equipment": "Libre", "subtype": "Alterno o simultáneo, supino"},
-        {"muscle": "Bíceps", "name": "Hammer curl", "exercise_type": "Flexión codo", "pattern": "Mancuernas", "equipment": "Libre", "subtype": "Agarre neutro (braquiorradial/braquial)"},
-        {"muscle": "Bíceps", "name": "Incline DB curl", "exercise_type": "Flexión codo", "pattern": "Mancuernas", "equipment": "Banco inclinado", "subtype": "Mayor estiramiento bíceps"},
-        {"muscle": "Bíceps", "name": "Concentration curl", "exercise_type": "Flexión codo", "pattern": "Mancuernas", "equipment": "Sentado", "subtype": "Brazo apoyado en muslo interno"},
-        {"muscle": "Bíceps", "name": "Cable curl", "exercise_type": "Flexión codo", "pattern": "Polea", "equipment": "Baja", "subtype": "Barra recta/EZ, de pie"},
-        
-        {"muscle": "Tríceps", "name": "Close-grip bench press", "exercise_type": "Empuje horizontal", "pattern": "Barra", "equipment": "Banca", "subtype": "Manos estrechas, gran carga para tríceps"},
-        {"muscle": "Tríceps", "name": "Lying barbell triceps extension (skullcrusher)", "exercise_type": "Extensión codo", "pattern": "Barra", "equipment": "Banca plana", "subtype": "Flex/extensión codo, barra hacia frente/cabeza"},
-        {"muscle": "Tríceps", "name": "Overhead DB triceps extension", "exercise_type": "Extensión codo", "pattern": "Mancuernas", "equipment": "De pie/sentado", "subtype": "Un DB con ambas manos o uno por mano"},
-        {"muscle": "Tríceps", "name": "DB kickback", "exercise_type": "Extensión codo", "pattern": "Mancuernas", "equipment": "Banco/de pie", "subtype": "Extensión hacia atrás"},
-        {"muscle": "Tríceps", "name": "Triceps pushdown (cable)", "exercise_type": "Extensión codo", "pattern": "Polea", "equipment": "Alta, barra", "subtype": "Clásico de extensión, agarre prono"},
-        {"muscle": "Tríceps", "name": "Rope pushdown", "exercise_type": "Extensión codo", "pattern": "Polea", "equipment": "Alta, cuerda", "subtype": "Separa cuerdas al final"},
-        {"muscle": "Tríceps", "name": "Parallel bar dip (triceps)", "exercise_type": "Empuje vertical", "pattern": "Peso corporal", "equipment": "Barras paralelas", "subtype": "Tronco más vertical, codos pegados"},
-        
-        {"muscle": "Cuádriceps", "name": "Back squat", "exercise_type": "Sentadilla", "pattern": "Barra", "equipment": "Rack", "subtype": "Barra alta o baja"},
-        {"muscle": "Cuádriceps", "name": "Front squat", "exercise_type": "Sentadilla frontal", "pattern": "Barra", "equipment": "Rack", "subtype": "Más énfasis en cuádriceps"},
-        {"muscle": "Cuádriceps", "name": "Goblet squat", "exercise_type": "Sentadilla", "pattern": "Mancuernas/Kettlebell", "equipment": "Cargada frontal", "subtype": "Buen patrón para quad"},
-        {"muscle": "Cuádriceps", "name": "Leg extension machine", "exercise_type": "Extensión rodilla", "pattern": "Máquina", "equipment": "Selectorizada", "subtype": "Aíslante de cuádriceps"},
-        {"muscle": "Cuádriceps", "name": "45° leg press", "exercise_type": "Prensa piernas", "pattern": "Máquina", "equipment": "Sled 45°", "subtype": "Trabajo global pierna, buen quad"},
-        {"muscle": "Cuádriceps", "name": "Hack squat machine", "exercise_type": "Sentadilla guiada", "pattern": "Máquina", "equipment": "Hack", "subtype": "Gran enfoque en cuádriceps según pies"},
-        {"muscle": "Cuádriceps", "name": "Walking lunge", "exercise_type": "Zancada", "pattern": "Mancuernas", "equipment": "Libre", "subtype": "Clásico para quad"},
-        {"muscle": "Cuádriceps", "name": "Bulgarian split squat", "exercise_type": "Zancada unilateral", "pattern": "Mancuernas", "equipment": "Pie trasero elevado", "subtype": "Muy usado para quad"},
-        
-        {"muscle": "Isquiotibiales", "name": "Romanian deadlift", "exercise_type": "Bisagra", "pattern": "Barra", "equipment": "Libre", "subtype": "Foco isquios/glúteo y erectores"},
-        {"muscle": "Isquiotibiales", "name": "Stiff-leg deadlift", "exercise_type": "Bisagra", "pattern": "Barra", "equipment": "Libre", "subtype": "Piernas casi rectas, más isquios"},
-        {"muscle": "Isquiotibiales", "name": "Lying leg curl machine", "exercise_type": "Flexión rodilla", "pattern": "Máquina", "equipment": "Tumbado", "subtype": "Aislante clásico de isquios"},
-        {"muscle": "Isquiotibiales", "name": "Seated leg curl machine", "exercise_type": "Flexión rodilla", "pattern": "Máquina", "equipment": "Sentado", "subtype": "Isquios en posición estirada"},
-        {"muscle": "Isquiotibiales", "name": "DB Romanian deadlift", "exercise_type": "Bisagra", "pattern": "Mancuernas", "equipment": "Libre", "subtype": "Variante unilateral o bilateral"},
-        
-        {"muscle": "Glúteo", "name": "Hip thrust (barra)", "exercise_type": "Extensión cadera", "pattern": "Barra", "equipment": "Banco", "subtype": "Máximo glúteo aislado"},
-        {"muscle": "Glúteo", "name": "Glute bridge", "exercise_type": "Extensión cadera", "pattern": "Peso corporal", "equipment": "Suelo", "subtype": "Versión básica del hip thrust"},
-        {"muscle": "Glúteo", "name": "Cable kickback", "exercise_type": "Extensión cadera", "pattern": "Polea", "equipment": "Baja, tobillera", "subtype": "Patada atrás con cable"},
-        {"muscle": "Glúteo", "name": "Hip abduction machine", "exercise_type": "Abducción cadera", "pattern": "Máquina", "equipment": "Selectorizada", "subtype": "Glúteo medio principalmente"},
-        
-        {"muscle": "Pantorrilla", "name": "Standing calf raise (machine)", "exercise_type": "Flexión plantar", "pattern": "Máquina", "equipment": "Selectorizada", "subtype": "Rodillas extendidas, gastrocnemios"},
-        {"muscle": "Pantorrilla", "name": "Seated calf raise machine", "exercise_type": "Flexión plantar", "pattern": "Máquina", "equipment": "Sentado", "subtype": "Rodilla flexionada, más sóleo"},
-        {"muscle": "Pantorrilla", "name": "Leg press calf raise", "exercise_type": "Flexión plantar", "pattern": "Máquina", "equipment": "Leg press", "subtype": "Usando la prensa para gemelos"},
-        
-        {"muscle": "Abdomen", "name": "Crunch", "exercise_type": "Flexión tronco", "pattern": "Peso corporal", "equipment": "Suelo", "subtype": "Recto abdominal superior"},
-        {"muscle": "Abdomen", "name": "Plank", "exercise_type": "Anti-extensión", "pattern": "Peso corporal", "equipment": "Suelo", "subtype": "Plancha frontal clásica"},
-        {"muscle": "Abdomen", "name": "Hanging leg raise", "exercise_type": "Elevación cadera", "pattern": "Peso corporal", "equipment": "Barra", "subtype": "Piernas rectas, muy demandante"},
-        {"muscle": "Abdomen", "name": "Russian twist (BW)", "exercise_type": "Rotación", "pattern": "Peso corporal", "equipment": "Suelo", "subtype": "Oblicuos"},
-        {"muscle": "Abdomen", "name": "Cable crunch (kneeling)", "exercise_type": "Flexión tronco", "pattern": "Polea", "equipment": "Polea alta, cuerda", "subtype": "Muy popular para recto"},
-        {"muscle": "Abdomen", "name": "Ab wheel rollout", "exercise_type": "Anti-extensión", "pattern": "Peso corporal", "equipment": "Rueda/barra", "subtype": "Muy exigente para core"},
-        {"muscle": "Abdomen", "name": "Side plank", "exercise_type": "Anti-flexión lateral", "pattern": "Peso corporal", "equipment": "Suelo", "subtype": "Oblicuos/transverso"},
+    # Use the complete exercise data imported from exercises_data.py (Excel file)
+    result = await db.exercises.insert_many(EXERCISES_DATA)
+    
+    return {"message": f"Seeded {len(result.inserted_ids)} exercises from Excel encyclopedia"}
+
+
+@api_router.post("/admin/seed-achievements")
+async def seed_achievements():
+    """Seed the achievements database"""
+    # Check if already seeded
+    count = await db.achievements.count_documents({})
+    if count > 0:
+        return {"message": f"Database already has {count} achievements"}
+    
+    # Insert all achievements from the data file
+    result = await db.achievements.insert_many(ACHIEVEMENTS_DATA)
+    
+    return {"message": f"Seeded {len(result.inserted_ids)} achievements"}
+
+
+@api_router.post("/admin/reseed-exercises")
+async def reseed_exercises():
+    """Force re-seed exercises by deleting existing and inserting new"""
+    await db.exercises.delete_many({})
+    result = await db.exercises.insert_many(EXERCISES_DATA)
+    return {"message": f"Re-seeded {len(result.inserted_ids)} exercises from Excel encyclopedia"}
+
+
+# ==================== ACHIEVEMENTS ENDPOINTS ====================
+
+@api_router.get("/achievements")
+async def get_all_achievements():
+    """Get all available achievements"""
+    achievements = await db.achievements.find({}).to_list(100)
+    return [
+        {
+            "id": str(a["_id"]),
+            "code": a["code"],
+            "name": a["name"],
+            "description": a["description"],
+            "category": a["category"],
+            "points": a["points"],
+            "rarity": a["rarity"],
+            "criteria": a.get("criteria", {})
+        }
+        for a in achievements
+    ]
+
+
+@api_router.get("/achievements/user")
+async def get_user_achievements(current_user: dict = Depends(get_current_user)):
+    """Get achievements unlocked by the current user"""
+    user_achievements = await db.user_achievements.find({
+        "user_id": str(current_user["_id"])
+    }).to_list(100)
+    
+    result = []
+    for ua in user_achievements:
+        achievement = await db.achievements.find_one({"_id": ObjectId(ua["achievement_id"])})
+        if achievement:
+            result.append({
+                "id": str(ua["_id"]),
+                "achievement": {
+                    "id": str(achievement["_id"]),
+                    "code": achievement["code"],
+                    "name": achievement["name"],
+                    "description": achievement["description"],
+                    "category": achievement["category"],
+                    "points": achievement["points"],
+                    "rarity": achievement["rarity"]
+                },
+                "unlocked_at": ua["unlocked_at"]
+            })
+    
+    return result
+
+
+@api_router.post("/achievements/check")
+async def check_and_unlock_achievements(current_user: dict = Depends(get_current_user)):
+    """Check user progress and unlock any earned achievements"""
+    user_id = str(current_user["_id"])
+    newly_unlocked = []
+    
+    # Get all achievements
+    all_achievements = await db.achievements.find({}).to_list(100)
+    
+    # Get user's current achievements
+    user_achievement_ids = [
+        ua["achievement_id"] 
+        for ua in await db.user_achievements.find({"user_id": user_id}).to_list(100)
     ]
     
-    # Insert all exercises
-    result = await db.exercises.insert_many(exercises_data)
+    # Get user stats
+    total_workouts = await db.workout_sessions.count_documents({
+        "user_id": user_id, 
+        "is_completed": True
+    })
+    total_prs = await db.personal_records.count_documents({"user_id": user_id})
+    streak = current_user.get("current_streak_days", 0)
+    total_volume = current_user.get("total_volume_kg", 0)
+    account_level = current_user.get("account_level", "Novice")
     
-    return {"message": f"Seeded {len(result.inserted_ids)} exercises"}
+    for achievement in all_achievements:
+        ach_id = str(achievement["_id"])
+        
+        # Skip if already unlocked
+        if ach_id in user_achievement_ids:
+            continue
+        
+        criteria = achievement.get("criteria", {})
+        should_unlock = False
+        
+        # Check criteria
+        if "workouts_completed" in criteria and total_workouts >= criteria["workouts_completed"]:
+            should_unlock = True
+        elif "streak_days" in criteria and streak >= criteria["streak_days"]:
+            should_unlock = True
+        elif "total_volume" in criteria and total_volume >= criteria["total_volume"]:
+            should_unlock = True
+        elif "total_prs" in criteria and total_prs >= criteria["total_prs"]:
+            should_unlock = True
+        elif "account_level" in criteria and account_level == criteria["account_level"]:
+            should_unlock = True
+        
+        if should_unlock:
+            await db.user_achievements.insert_one({
+                "user_id": user_id,
+                "achievement_id": ach_id,
+                "unlocked_at": datetime.utcnow()
+            })
+            newly_unlocked.append({
+                "id": ach_id,
+                "code": achievement["code"],
+                "name": achievement["name"],
+                "description": achievement["description"],
+                "points": achievement["points"],
+                "rarity": achievement["rarity"]
+            })
+    
+    return {
+        "newly_unlocked": newly_unlocked,
+        "total_unlocked": len(user_achievement_ids) + len(newly_unlocked)
+    }
 
 # ==================== ROOT ====================
 
