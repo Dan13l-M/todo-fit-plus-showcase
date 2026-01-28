@@ -11,10 +11,11 @@ export default function RootLayout() {
     // Check authentication on app load
     checkAuth();
     
-    // Seed exercises on first load
+    // Seed exercises and achievements on first load
     const seedData = async () => {
       try {
         await adminApi.seedExercises();
+        await adminApi.seedAchievements();
       } catch (error) {
         // Already seeded or error - ignore
       }
