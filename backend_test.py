@@ -1,442 +1,478 @@
 #!/usr/bin/env python3
 """
-Backend API Testing Script for ToDoApp Plus - Fitness API
-Tests all major endpoints with realistic data
+ToDoApp Plus Backend API Testing Suite
+Tests the updated Exercise Library API and new Achievements API
 """
 
 import requests
 import json
-import time
-from datetime import datetime
 import sys
+from datetime import datetime
+from typing import Dict, Any, Optional
 
-# Configuration
-BASE_URL = "https://todofit.preview.emergentagent.com/api"
-HEADERS = {"Content-Type": "application/json"}
+# Backend URL from frontend/.env
+BACKEND_URL = "https://todofit.preview.emergentagent.com/api"
 
-# Test data
-TEST_USER = {
-    "email": "sarah.johnson@email.com",
-    "username": "sarah_fit",
-    "password": "SecurePass123!",
-    "full_name": "Sarah Johnson"
-}
-
-TEST_LOGIN = {
-    "email": "sarah.johnson@email.com", 
-    "password": "SecurePass123!"
-}
-
-# Global variables to store test data
-auth_token = None
-user_id = None
-routine_id = None
-session_id = None
-exercise_ids = []
-
-def log_test(test_name, success, details=""):
-    """Log test results"""
-    status = "✅ PASS" if success else "❌ FAIL"
-    print(f"{status} {test_name}")
-    if details:
-        print(f"   {details}")
-    if not success:
-        print(f"   Response: {details}")
-
-def make_request(method, endpoint, data=None, auth=False):
-    """Make HTTP request with proper headers"""
-    url = f"{BASE_URL}{endpoint}"
-    headers = HEADERS.copy()
-    
-    if auth and auth_token:
-        headers["Authorization"] = f"Bearer {auth_token}"
-    
-    try:
-        if method == "GET":
-            response = requests.get(url, headers=headers, timeout=30)
-        elif method == "POST":
-            response = requests.post(url, headers=headers, json=data, timeout=30)
-        elif method == "PUT":
-            response = requests.put(url, headers=headers, json=data, timeout=30)
-        elif method == "DELETE":
-            response = requests.delete(url, headers=headers, timeout=30)
+class BackendTester:
+    def __init__(self):
+        self.session = requests.Session()
+        self.auth_token = None
+        self.user_data = None
+        self.test_results = []
         
-        return response
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
-        return None
-
-def test_health_check():
-    """Test basic health endpoint"""
-    print("\n=== HEALTH CHECK ===")
-    
-    response = make_request("GET", "/health")
-    if response and response.status_code == 200:
-        log_test("Health Check", True, "API is responding")
-        return True
-    else:
-        log_test("Health Check", False, f"Status: {response.status_code if response else 'No response'}")
-        return False
-
-def test_seed_exercises():
-    """Seed exercises if database is empty"""
-    print("\n=== SEEDING EXERCISES ===")
-    
-    response = make_request("POST", "/admin/seed-exercises")
-    if response and response.status_code == 200:
-        result = response.json()
-        log_test("Seed Exercises", True, result.get("message", ""))
-        return True
-    else:
-        log_test("Seed Exercises", False, f"Status: {response.status_code if response else 'No response'}")
-        return False
-
-def test_user_registration():
-    """Test user registration"""
-    print("\n=== USER REGISTRATION ===")
-    global auth_token, user_id
-    
-    response = make_request("POST", "/auth/register", TEST_USER)
-    
-    if response and response.status_code == 200:
-        data = response.json()
-        auth_token = data.get("access_token")
-        user_data = data.get("user", {})
-        user_id = user_data.get("id")
-        
-        if auth_token and user_id:
-            log_test("User Registration", True, f"User created: {user_data.get('username')} (ID: {user_id})")
-            return True
-        else:
-            log_test("User Registration", False, "Missing token or user ID in response")
-            return False
-    else:
-        error_msg = response.json().get("detail", "Unknown error") if response else "No response"
-        log_test("User Registration", False, f"Status: {response.status_code if response else 'No response'}, Error: {error_msg}")
-        return False
-
-def test_user_login():
-    """Test user login"""
-    print("\n=== USER LOGIN ===")
-    global auth_token, user_id
-    
-    response = make_request("POST", "/auth/login", TEST_LOGIN)
-    
-    if response and response.status_code == 200:
-        data = response.json()
-        auth_token = data.get("access_token")
-        user_data = data.get("user", {})
-        user_id = user_data.get("id")
-        
-        if auth_token and user_id:
-            log_test("User Login", True, f"Login successful for: {user_data.get('username')}")
-            return True
-        else:
-            log_test("User Login", False, "Missing token or user ID in response")
-            return False
-    else:
-        error_msg = response.json().get("detail", "Unknown error") if response else "No response"
-        log_test("User Login", False, f"Status: {response.status_code if response else 'No response'}, Error: {error_msg}")
-        return False
-
-def test_get_current_user():
-    """Test get current user endpoint"""
-    print("\n=== GET CURRENT USER ===")
-    
-    response = make_request("GET", "/auth/me", auth=True)
-    
-    if response and response.status_code == 200:
-        user_data = response.json()
-        expected_email = TEST_USER["email"]
-        actual_email = user_data.get("email")
-        
-        if actual_email == expected_email:
-            log_test("Get Current User", True, f"User profile retrieved: {user_data.get('username')}")
-            return True
-        else:
-            log_test("Get Current User", False, f"Email mismatch: expected {expected_email}, got {actual_email}")
-            return False
-    else:
-        error_msg = response.json().get("detail", "Unknown error") if response else "No response"
-        log_test("Get Current User", False, f"Status: {response.status_code if response else 'No response'}, Error: {error_msg}")
-        return False
-
-def test_exercise_library():
-    """Test exercise library endpoints"""
-    print("\n=== EXERCISE LIBRARY ===")
-    global exercise_ids
-    
-    # Test get all exercises
-    response = make_request("GET", "/exercises")
-    if response and response.status_code == 200:
-        exercises = response.json()
-        if len(exercises) > 0:
-            exercise_ids = [ex["id"] for ex in exercises[:5]]  # Store first 5 for later use
-            log_test("Get All Exercises", True, f"Retrieved {len(exercises)} exercises")
-        else:
-            log_test("Get All Exercises", False, "No exercises returned")
-            return False
-    else:
-        log_test("Get All Exercises", False, f"Status: {response.status_code if response else 'No response'}")
-        return False
-    
-    # Test filter by muscle
-    response = make_request("GET", "/exercises?muscle=Espalda")
-    if response and response.status_code == 200:
-        back_exercises = response.json()
-        log_test("Filter by Muscle (Espalda)", True, f"Found {len(back_exercises)} back exercises")
-    else:
-        log_test("Filter by Muscle (Espalda)", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    # Test search exercises
-    response = make_request("GET", "/exercises?search=pull")
-    if response and response.status_code == 200:
-        search_results = response.json()
-        log_test("Search Exercises (pull)", True, f"Found {len(search_results)} exercises matching 'pull'")
-    else:
-        log_test("Search Exercises (pull)", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    # Test get muscle groups
-    response = make_request("GET", "/exercises/muscles")
-    if response and response.status_code == 200:
-        muscles = response.json()
-        log_test("Get Muscle Groups", True, f"Retrieved {len(muscles)} muscle groups: {', '.join(muscles[:3])}...")
-    else:
-        log_test("Get Muscle Groups", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    return True
-
-def test_routine_crud():
-    """Test routine CRUD operations"""
-    print("\n=== ROUTINE CRUD ===")
-    global routine_id
-    
-    if not exercise_ids:
-        log_test("Create Routine", False, "No exercise IDs available")
-        return False
-    
-    # Create routine
-    routine_data = {
-        "name": "Upper Body Power",
-        "description": "Strength focused upper body workout",
-        "routine_type": "UPPER_BODY",
-        "difficulty_level": "Intermediate",
-        "exercises": [
-            {
-                "exercise_id": exercise_ids[0],
-                "exercise_order": 1,
-                "sets_planned": 4,
-                "reps_planned": 6,
-                "target_weight_kg": 80.0,
-                "rest_seconds": 180
-            },
-            {
-                "exercise_id": exercise_ids[1],
-                "exercise_order": 2,
-                "sets_planned": 3,
-                "reps_planned": 8,
-                "target_weight_kg": 60.0,
-                "rest_seconds": 120
-            }
-        ]
-    }
-    
-    response = make_request("POST", "/routines", routine_data, auth=True)
-    if response and response.status_code == 200:
-        routine = response.json()
-        routine_id = routine.get("id")
-        log_test("Create Routine", True, f"Created routine: {routine.get('name')} (ID: {routine_id})")
-    else:
-        error_msg = response.json().get("detail", "Unknown error") if response else "No response"
-        log_test("Create Routine", False, f"Status: {response.status_code if response else 'No response'}, Error: {error_msg}")
-        return False
-    
-    # Get user routines
-    response = make_request("GET", "/routines", auth=True)
-    if response and response.status_code == 200:
-        routines = response.json()
-        log_test("Get User Routines", True, f"Retrieved {len(routines)} routines")
-    else:
-        log_test("Get User Routines", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    # Add exercise to routine
-    if routine_id and len(exercise_ids) > 2:
-        exercise_data = {
-            "exercise_id": exercise_ids[2],
-            "exercise_order": 3,
-            "sets_planned": 3,
-            "reps_planned": 10,
-            "target_weight_kg": 40.0,
-            "rest_seconds": 90
+    def log_test(self, test_name: str, success: bool, details: str = "", expected: Any = None, actual: Any = None):
+        """Log test results"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "details": details,
+            "timestamp": datetime.now().isoformat()
         }
+        if expected is not None:
+            result["expected"] = expected
+        if actual is not None:
+            result["actual"] = actual
         
-        response = make_request("POST", f"/routines/{routine_id}/exercises", exercise_data, auth=True)
-        if response and response.status_code == 200:
-            log_test("Add Exercise to Routine", True, "Exercise added successfully")
-        else:
-            log_test("Add Exercise to Routine", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    return True
+        self.test_results.append(result)
+        
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
+        if not success and expected is not None and actual is not None:
+            print(f"   Expected: {expected}")
+            print(f"   Actual: {actual}")
+        print()
 
-def test_workout_sessions():
-    """Test workout session flow"""
-    print("\n=== WORKOUT SESSIONS ===")
-    global session_id
-    
-    # Start workout session
-    session_data = {
-        "routine_id": routine_id,
-        "notes": "Morning strength session"
-    }
-    
-    response = make_request("POST", "/sessions", session_data, auth=True)
-    if response and response.status_code == 200:
-        session = response.json()
-        session_id = session.get("id")
-        log_test("Start Workout Session", True, f"Session started (ID: {session_id})")
-    else:
-        error_msg = response.json().get("detail", "Unknown error") if response else "No response"
-        log_test("Start Workout Session", False, f"Status: {response.status_code if response else 'No response'}, Error: {error_msg}")
-        return False
-    
-    # Add sets to session
-    if session_id and exercise_ids:
-        # Add first set
-        set_data = {
-            "exercise_id": exercise_ids[0],
-            "set_data": {
-                "set_number": 1,
-                "reps_completed": 6,
-                "weight_kg": 80.0,
-                "rpe": 8.0,
-                "is_warmup": False,
-                "is_failure": False,
-                "notes": "Good form, felt strong"
+    def make_request(self, method: str, endpoint: str, data: Dict = None, headers: Dict = None) -> requests.Response:
+        """Make HTTP request with proper error handling"""
+        url = f"{BACKEND_URL}{endpoint}"
+        
+        # Add auth header if we have a token
+        if self.auth_token and headers is None:
+            headers = {}
+        if self.auth_token:
+            headers = headers or {}
+            headers["Authorization"] = f"Bearer {self.auth_token}"
+        
+        try:
+            if method.upper() == "GET":
+                response = self.session.get(url, headers=headers)
+            elif method.upper() == "POST":
+                response = self.session.post(url, json=data, headers=headers)
+            elif method.upper() == "PUT":
+                response = self.session.put(url, json=data, headers=headers)
+            elif method.upper() == "DELETE":
+                response = self.session.delete(url, headers=headers)
+            else:
+                raise ValueError(f"Unsupported method: {method}")
+            
+            return response
+        except requests.exceptions.RequestException as e:
+            print(f"Request failed: {e}")
+            raise
+
+    def test_health_check(self):
+        """Test basic API health"""
+        try:
+            response = self.make_request("GET", "/health")
+            if response.status_code == 200:
+                data = response.json()
+                self.log_test("API Health Check", True, f"Status: {data.get('status', 'unknown')}")
+            else:
+                self.log_test("API Health Check", False, f"Status code: {response.status_code}")
+        except Exception as e:
+            self.log_test("API Health Check", False, f"Exception: {str(e)}")
+
+    def test_user_registration(self):
+        """Test user registration"""
+        try:
+            # Create unique user for testing
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            user_data = {
+                "email": f"testuser_{timestamp}@fitness.com",
+                "username": f"fituser_{timestamp}",
+                "password": "SecurePass123!",
+                "full_name": f"Test User {timestamp}"
             }
-        }
-        
-        response = make_request("POST", f"/sessions/{session_id}/sets", set_data, auth=True)
-        if response and response.status_code == 200:
-            set_result = response.json()
-            is_pr = set_result.get("is_pr", False)
-            pr_note = " (NEW PR!)" if is_pr else ""
-            log_test("Add Set to Session", True, f"Set added: {set_result.get('reps_completed')} reps @ {set_result.get('weight_kg')}kg{pr_note}")
-        else:
-            log_test("Add Set to Session", False, f"Status: {response.status_code if response else 'No response'}")
-        
-        # Add second set
-        set_data["set_data"]["set_number"] = 2
-        set_data["set_data"]["reps_completed"] = 5
-        set_data["set_data"]["weight_kg"] = 82.5
-        
-        response = make_request("POST", f"/sessions/{session_id}/sets", set_data, auth=True)
-        if response and response.status_code == 200:
-            log_test("Add Second Set", True, "Second set added successfully")
-        else:
-            log_test("Add Second Set", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    # Get session details
-    if session_id:
-        response = make_request("GET", f"/sessions/{session_id}", auth=True)
-        if response and response.status_code == 200:
-            session_details = response.json()
-            total_sets = session_details.get("total_sets", 0)
-            total_volume = session_details.get("total_volume_kg", 0)
-            log_test("Get Session Details", True, f"Session has {total_sets} sets, {total_volume}kg total volume")
-        else:
-            log_test("Get Session Details", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    # Complete session
-    if session_id:
-        response = make_request("POST", f"/sessions/{session_id}/complete", auth=True)
-        if response and response.status_code == 200:
-            completed_session = response.json()
-            duration = completed_session.get("duration_minutes", 0)
-            log_test("Complete Session", True, f"Session completed in {duration} minutes")
-        else:
-            log_test("Complete Session", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    return True
+            
+            response = self.make_request("POST", "/auth/register", user_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "access_token" in data and "user" in data:
+                    self.auth_token = data["access_token"]
+                    self.user_data = data["user"]
+                    self.log_test("User Registration", True, 
+                                f"User created: {data['user']['username']}, Token received")
+                else:
+                    self.log_test("User Registration", False, "Missing token or user data in response")
+            else:
+                self.log_test("User Registration", False, 
+                            f"Status: {response.status_code}, Response: {response.text}")
+                
+        except Exception as e:
+            self.log_test("User Registration", False, f"Exception: {str(e)}")
 
-def test_progress_endpoints():
-    """Test progress and stats endpoints"""
-    print("\n=== PROGRESS & STATS ===")
-    
-    # Get dashboard stats
-    response = make_request("GET", "/progress/dashboard", auth=True)
-    if response and response.status_code == 200:
-        stats = response.json()
-        streak = stats.get("current_streak_days", 0)
-        volume = stats.get("total_volume_kg", 0)
-        level = stats.get("account_level", "Unknown")
-        workouts = stats.get("workouts_this_month", 0)
-        log_test("Get Dashboard Stats", True, f"Level: {level}, Streak: {streak} days, Volume: {volume}kg, Workouts: {workouts}")
-    else:
-        log_test("Get Dashboard Stats", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    # Get personal records
-    response = make_request("GET", "/progress/prs", auth=True)
-    if response and response.status_code == 200:
-        prs = response.json()
-        log_test("Get Personal Records", True, f"Retrieved {len(prs)} personal records")
-        
-        # Show first few PRs if any
-        for i, pr in enumerate(prs[:3]):
-            print(f"   PR {i+1}: {pr.get('exercise_name')} - {pr.get('value')}kg ({pr.get('pr_type')})")
-    else:
-        log_test("Get Personal Records", False, f"Status: {response.status_code if response else 'No response'}")
-    
-    return True
+    def test_user_login(self):
+        """Test user login with created user"""
+        if not self.user_data:
+            self.log_test("User Login", False, "No user data available for login test")
+            return
+            
+        try:
+            login_data = {
+                "email": self.user_data["email"],
+                "password": "SecurePass123!"
+            }
+            
+            response = self.make_request("POST", "/auth/login", login_data)
+            
+            if response.status_code == 200:
+                data = response.json()
+                if "access_token" in data:
+                    self.log_test("User Login", True, "Login successful, token received")
+                else:
+                    self.log_test("User Login", False, "No token in login response")
+            else:
+                self.log_test("User Login", False, 
+                            f"Status: {response.status_code}, Response: {response.text}")
+                
+        except Exception as e:
+            self.log_test("User Login", False, f"Exception: {str(e)}")
 
-def run_all_tests():
-    """Run all backend API tests"""
-    print("🏋️ Starting ToDoApp Plus Backend API Tests")
-    print(f"Base URL: {BASE_URL}")
-    print("=" * 60)
-    
-    test_results = []
-    
-    # Health check first
-    test_results.append(test_health_check())
-    
-    # Seed exercises
-    test_results.append(test_seed_exercises())
-    
-    # Authentication flow
-    test_results.append(test_user_registration())
-    test_results.append(test_user_login())
-    test_results.append(test_get_current_user())
-    
-    # Exercise library
-    test_results.append(test_exercise_library())
-    
-    # Routines
-    test_results.append(test_routine_crud())
-    
-    # Workout sessions
-    test_results.append(test_workout_sessions())
-    
-    # Progress
-    test_results.append(test_progress_endpoints())
-    
-    # Summary
-    print("\n" + "=" * 60)
-    print("🏁 TEST SUMMARY")
-    print("=" * 60)
-    
-    passed = sum(test_results)
-    total = len(test_results)
-    
-    print(f"Tests Passed: {passed}/{total}")
-    print(f"Success Rate: {(passed/total)*100:.1f}%")
-    
-    if passed == total:
-        print("🎉 ALL TESTS PASSED!")
-        return True
-    else:
-        print("⚠️  SOME TESTS FAILED")
-        return False
+    def test_get_current_user(self):
+        """Test getting current user profile"""
+        if not self.auth_token:
+            self.log_test("Get Current User", False, "No auth token available")
+            return
+            
+        try:
+            response = self.make_request("GET", "/auth/me")
+            
+            if response.status_code == 200:
+                data = response.json()
+                required_fields = ["id", "email", "username", "account_level"]
+                missing_fields = [field for field in required_fields if field not in data]
+                
+                if not missing_fields:
+                    self.log_test("Get Current User", True, 
+                                f"User profile retrieved: {data['username']}")
+                else:
+                    self.log_test("Get Current User", False, 
+                                f"Missing fields: {missing_fields}")
+            else:
+                self.log_test("Get Current User", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Get Current User", False, f"Exception: {str(e)}")
+
+    def test_exercise_library_count(self):
+        """Test that exercise library has 441 exercises"""
+        try:
+            response = self.make_request("GET", "/exercises?limit=500")
+            
+            if response.status_code == 200:
+                exercises = response.json()
+                exercise_count = len(exercises)
+                
+                if exercise_count == 441:
+                    self.log_test("Exercise Library Count", True, 
+                                f"Found exactly 441 exercises")
+                else:
+                    self.log_test("Exercise Library Count", False, 
+                                f"Expected 441 exercises, found {exercise_count}", 
+                                expected=441, actual=exercise_count)
+            else:
+                self.log_test("Exercise Library Count", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Exercise Library Count", False, f"Exception: {str(e)}")
+
+    def test_muscle_groups_count(self):
+        """Test that there are 11 muscle groups including 'Antebrazo'"""
+        try:
+            response = self.make_request("GET", "/exercises/muscles")
+            
+            if response.status_code == 200:
+                muscles = response.json()
+                muscle_count = len(muscles)
+                
+                # Check count
+                if muscle_count == 11:
+                    count_success = True
+                    count_details = f"Found exactly 11 muscle groups"
+                else:
+                    count_success = False
+                    count_details = f"Expected 11 muscle groups, found {muscle_count}"
+                
+                # Check for 'Antebrazo'
+                has_antebrazo = "Antebrazo" in muscles
+                antebrazo_details = "'Antebrazo' found in muscle groups" if has_antebrazo else "'Antebrazo' missing from muscle groups"
+                
+                overall_success = count_success and has_antebrazo
+                details = f"{count_details}. {antebrazo_details}. Muscles: {muscles}"
+                
+                self.log_test("Muscle Groups Count & Antebrazo", overall_success, details,
+                            expected="11 groups with 'Antebrazo'", 
+                            actual=f"{muscle_count} groups, Antebrazo: {has_antebrazo}")
+            else:
+                self.log_test("Muscle Groups Count & Antebrazo", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Muscle Groups Count & Antebrazo", False, f"Exception: {str(e)}")
+
+    def test_exercise_search_functionality(self):
+        """Test exercise search and filter functionality"""
+        try:
+            # Test search by name
+            response = self.make_request("GET", "/exercises?search=pull&limit=20")
+            
+            if response.status_code == 200:
+                exercises = response.json()
+                
+                # Check if results contain 'pull' in name
+                search_results = [ex for ex in exercises if 'pull' in ex['name'].lower()]
+                
+                if len(search_results) > 0:
+                    self.log_test("Exercise Search by Name", True, 
+                                f"Found {len(search_results)} exercises with 'pull' in name")
+                else:
+                    self.log_test("Exercise Search by Name", False, 
+                                "No exercises found with 'pull' in name")
+            else:
+                self.log_test("Exercise Search by Name", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Exercise Search by Name", False, f"Exception: {str(e)}")
+
+    def test_exercise_muscle_filter(self):
+        """Test exercise filtering by muscle group"""
+        try:
+            # Test filter by muscle (Espalda)
+            response = self.make_request("GET", "/exercises?muscle=Espalda&limit=50")
+            
+            if response.status_code == 200:
+                exercises = response.json()
+                
+                # Check if all results are for 'Espalda'
+                espalda_exercises = [ex for ex in exercises if ex['muscle'] == 'Espalda']
+                
+                if len(espalda_exercises) == len(exercises) and len(exercises) > 0:
+                    self.log_test("Exercise Muscle Filter", True, 
+                                f"Found {len(exercises)} exercises for 'Espalda' muscle")
+                else:
+                    self.log_test("Exercise Muscle Filter", False, 
+                                f"Filter inconsistent: {len(espalda_exercises)}/{len(exercises)} match")
+            else:
+                self.log_test("Exercise Muscle Filter", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Exercise Muscle Filter", False, f"Exception: {str(e)}")
+
+    def test_achievements_list(self):
+        """Test GET /api/achievements - should return 20 achievements"""
+        try:
+            response = self.make_request("GET", "/achievements")
+            
+            if response.status_code == 200:
+                achievements = response.json()
+                achievement_count = len(achievements)
+                
+                if achievement_count == 20:
+                    # Check structure of first achievement
+                    if achievements:
+                        first_ach = achievements[0]
+                        required_fields = ["id", "code", "name", "description", "category", "points", "rarity"]
+                        missing_fields = [field for field in required_fields if field not in first_ach]
+                        
+                        if not missing_fields:
+                            self.log_test("Achievements List", True, 
+                                        f"Found exactly 20 achievements with correct structure")
+                        else:
+                            self.log_test("Achievements List", False, 
+                                        f"Achievement missing fields: {missing_fields}")
+                    else:
+                        self.log_test("Achievements List", False, "Empty achievements list")
+                else:
+                    self.log_test("Achievements List", False, 
+                                f"Expected 20 achievements, found {achievement_count}",
+                                expected=20, actual=achievement_count)
+            else:
+                self.log_test("Achievements List", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Achievements List", False, f"Exception: {str(e)}")
+
+    def test_user_achievements(self):
+        """Test GET /api/achievements/user - requires auth"""
+        if not self.auth_token:
+            self.log_test("User Achievements", False, "No auth token available")
+            return
+            
+        try:
+            response = self.make_request("GET", "/achievements/user")
+            
+            if response.status_code == 200:
+                user_achievements = response.json()
+                
+                # For new user, should be empty or have basic achievements
+                self.log_test("User Achievements", True, 
+                            f"Retrieved user achievements: {len(user_achievements)} unlocked")
+            else:
+                self.log_test("User Achievements", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("User Achievements", False, f"Exception: {str(e)}")
+
+    def test_check_achievements(self):
+        """Test POST /api/achievements/check - requires auth"""
+        if not self.auth_token:
+            self.log_test("Check Achievements", False, "No auth token available")
+            return
+            
+        try:
+            response = self.make_request("POST", "/achievements/check")
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                if "newly_unlocked" in result and "total_unlocked" in result:
+                    self.log_test("Check Achievements", True, 
+                                f"Achievement check successful. Newly unlocked: {len(result['newly_unlocked'])}, Total: {result['total_unlocked']}")
+                else:
+                    self.log_test("Check Achievements", False, 
+                                "Missing required fields in response")
+            else:
+                self.log_test("Check Achievements", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Check Achievements", False, f"Exception: {str(e)}")
+
+    def test_routines_crud_quick(self):
+        """Quick test of routines CRUD operations"""
+        if not self.auth_token:
+            self.log_test("Routines CRUD Quick Test", False, "No auth token available")
+            return
+            
+        try:
+            # Test GET routines (should be empty for new user)
+            response = self.make_request("GET", "/routines")
+            
+            if response.status_code == 200:
+                routines = response.json()
+                self.log_test("Routines CRUD Quick Test", True, 
+                            f"Routines endpoint accessible, found {len(routines)} routines")
+            else:
+                self.log_test("Routines CRUD Quick Test", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Routines CRUD Quick Test", False, f"Exception: {str(e)}")
+
+    def test_workout_sessions_quick(self):
+        """Quick test of workout sessions endpoint"""
+        if not self.auth_token:
+            self.log_test("Workout Sessions Quick Test", False, "No auth token available")
+            return
+            
+        try:
+            # Test GET sessions (should be empty for new user)
+            response = self.make_request("GET", "/sessions")
+            
+            if response.status_code == 200:
+                sessions = response.json()
+                self.log_test("Workout Sessions Quick Test", True, 
+                            f"Sessions endpoint accessible, found {len(sessions)} sessions")
+            else:
+                self.log_test("Workout Sessions Quick Test", False, 
+                            f"Status: {response.status_code}")
+                
+        except Exception as e:
+            self.log_test("Workout Sessions Quick Test", False, f"Exception: {str(e)}")
+
+    def run_all_tests(self):
+        """Run all backend tests"""
+        print("=" * 60)
+        print("ToDoApp Plus Backend API Testing Suite")
+        print("=" * 60)
+        print(f"Backend URL: {BACKEND_URL}")
+        print(f"Test started at: {datetime.now().isoformat()}")
+        print("=" * 60)
+        print()
+
+        # Basic connectivity
+        self.test_health_check()
+        
+        # Authentication flow
+        self.test_user_registration()
+        self.test_user_login()
+        self.test_get_current_user()
+        
+        # Exercise Library API (main focus)
+        self.test_exercise_library_count()
+        self.test_muscle_groups_count()
+        self.test_exercise_search_functionality()
+        self.test_exercise_muscle_filter()
+        
+        # NEW Achievements API (main focus)
+        self.test_achievements_list()
+        self.test_user_achievements()
+        self.test_check_achievements()
+        
+        # Quick verification of existing APIs
+        self.test_routines_crud_quick()
+        self.test_workout_sessions_quick()
+        
+        # Summary
+        self.print_summary()
+
+    def print_summary(self):
+        """Print test summary"""
+        print("=" * 60)
+        print("TEST SUMMARY")
+        print("=" * 60)
+        
+        total_tests = len(self.test_results)
+        passed_tests = len([r for r in self.test_results if r["success"]])
+        failed_tests = total_tests - passed_tests
+        
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {failed_tests}")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
+        print()
+        
+        if failed_tests > 0:
+            print("FAILED TESTS:")
+            for result in self.test_results:
+                if not result["success"]:
+                    print(f"❌ {result['test']}: {result['details']}")
+            print()
+        
+        print("CRITICAL FOCUS AREAS:")
+        exercise_tests = [r for r in self.test_results if "Exercise" in r["test"]]
+        achievement_tests = [r for r in self.test_results if "Achievement" in r["test"]]
+        
+        exercise_passed = len([r for r in exercise_tests if r["success"]])
+        achievement_passed = len([r for r in achievement_tests if r["success"]])
+        
+        print(f"Exercise Library API: {exercise_passed}/{len(exercise_tests)} tests passed")
+        print(f"Achievements API: {achievement_passed}/{len(achievement_tests)} tests passed")
+        
+        return failed_tests == 0
 
 if __name__ == "__main__":
-    success = run_all_tests()
+    tester = BackendTester()
+    success = tester.run_all_tests()
+    
+    # Exit with appropriate code
     sys.exit(0 if success else 1)
