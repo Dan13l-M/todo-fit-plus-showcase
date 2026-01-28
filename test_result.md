@@ -349,11 +349,13 @@ frontend:
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Exercise Library API - verify 441 exercises loaded"
+    - "Achievements API - test all endpoints"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -363,3 +365,5 @@ agent_communication:
       message: "MVP implementation complete. Backend has auth, exercises, routines, sessions, and progress APIs. Frontend has all screens working. Please test backend APIs focusing on: 1) Auth flow (register, login, get user), 2) Exercises listing with filters, 3) Routine CRUD, 4) Workout session flow (start, add sets, complete). Use curl to test."
     - agent: "testing"
       message: "✅ COMPREHENSIVE BACKEND TESTING COMPLETED - ALL SYSTEMS WORKING PERFECTLY! Tested all 8 backend APIs with 100% success rate. Authentication flow robust with proper JWT handling and error responses. Exercise library with 68 exercises, filtering, and search all functional. Routine CRUD operations working with proper exercise management. Workout session flow excellent with PR detection, volume tracking, and progress updates. Dashboard and PR APIs providing accurate real-time stats. All edge cases tested (invalid auth, duplicate users, unauthorized access). Backend is production-ready with no critical issues found."
+    - agent: "main"
+      message: "UPDATED: Added complete Excel exercise data (441 exercises vs 68 before) and new Achievements system. New APIs added: GET /api/achievements (all achievements), GET /api/achievements/user (user's unlocked), POST /api/achievements/check (check & unlock). Also added reseed endpoint. Please verify: 1) Exercise count is now 441, 2) 11 muscle groups available, 3) Achievements endpoints working correctly."
