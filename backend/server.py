@@ -13,6 +13,9 @@ import jwt
 import bcrypt
 from dotenv import load_dotenv
 
+# Import exercise and achievement data from Excel file
+from exercises_data import EXERCISES_DATA, ACHIEVEMENTS_DATA
+
 load_dotenv()
 
 # MongoDB connection
