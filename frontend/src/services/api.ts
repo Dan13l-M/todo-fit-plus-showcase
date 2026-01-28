@@ -190,6 +190,28 @@ export const adminApi = {
     const response = await api.post('/admin/seed-exercises');
     return response.data;
   },
+  seedAchievements: async (): Promise<{ message: string }> => {
+    const response = await api.post('/admin/seed-achievements');
+    return response.data;
+  },
+};
+
+// Achievements API
+export const achievementsApi = {
+  getAll: async (): Promise<any[]> => {
+    const response = await api.get('/achievements');
+    return response.data;
+  },
+  
+  getUserAchievements: async (): Promise<any[]> => {
+    const response = await api.get('/achievements/user');
+    return response.data;
+  },
+  
+  checkAndUnlock: async (): Promise<{ newly_unlocked: any[]; total_unlocked: number }> => {
+    const response = await api.post('/achievements/check');
+    return response.data;
+  },
 };
 
 export default api;
