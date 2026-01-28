@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { AuthResponse, User, Exercise, Routine, WorkoutSession, DashboardStats, PersonalRecord } from '../types';
 
-const API_URL = Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL || 'https://traknplan.preview.emergentagent.com';
+const API_URL = Constants.expoConfig?.extra?.backendUrl || process.env.EXPO_PUBLIC_BACKEND_URL || 'https://todofit.preview.emergentagent.com';
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
