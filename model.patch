@@ -1,160 +1,252 @@
+diff --git a/model.patch b/model.patch
+index eb61a9b..e69de29 100644
+--- a/model.patch
++++ b/model.patch
+@@ -1,160 +0,0 @@
+-diff --git a/test_result.md b/test_result.md
+-index 164eca5..36ab54a 100644
+---- a/test_result.md
+-+++ b/test_result.md
+-@@ -111,11 +111,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "high"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "POST /api/auth/register - registers new user with email, username, password, returns JWT token"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: User registration working perfectly. Created user 'sarah_fit' with JWT token. Proper validation for duplicate emails (400 error). All authentication fields returned correctly."
+- 
+-   - task: "User Login API"
+-     implemented: true
+-@@ -123,11 +126,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "high"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "POST /api/auth/login - authenticates user with email/password, returns JWT token"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Login API working correctly. Successful authentication returns JWT token and user data. Invalid credentials properly return 401 error. Token format and user data structure validated."
+- 
+-   - task: "Get Current User API"
+-     implemented: true
+-@@ -135,11 +141,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "high"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "GET /api/auth/me - returns authenticated user profile"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Get current user API working perfectly. Returns correct user profile with all fields (id, email, username, stats). Proper 403 error for unauthorized access. JWT authentication working correctly."
+- 
+-   - task: "Exercise Library API"
+-     implemented: true
+-@@ -147,11 +156,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "high"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "GET /api/exercises - returns list of exercises with optional filters (muscle, equipment, search)"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Exercise library fully functional. Retrieved 50+ exercises with proper pagination. Muscle filtering (Espalda) returns 10 exercises. Search functionality works (6 results for 'pull'). Muscle groups endpoint returns 10 categories. All filtering and search parameters working correctly."
+- 
+-   - task: "Routine CRUD API"
+-     implemented: true
+-@@ -159,11 +171,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "high"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "POST/GET/PUT/DELETE /api/routines - full CRUD for workout routines"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Routine CRUD operations working perfectly. Created 'Upper Body Power' routine with exercises. GET /routines returns user's routines correctly. Adding exercises to routines works with proper exercise order, sets, reps, and weight targets. All routine data persisted correctly."
+- 
+-   - task: "Workout Session API"
+-     implemented: true
+-@@ -171,11 +186,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "high"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "POST /api/sessions - start session, POST /api/sessions/{id}/sets - add set, POST /api/sessions/{id}/complete - finish workout"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Workout session flow working excellently. Started session with routine. Added multiple sets with proper tracking (reps, weight, RPE). PR detection working (detected new 82.5kg PR). Session completion calculates duration and updates user stats. Total volume tracking accurate (892.5kg). All session data persisted correctly."
+- 
+-   - task: "Progress Dashboard API"
+-     implemented: true
+-@@ -183,11 +201,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "medium"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "GET /api/progress/dashboard - returns stats like streak, PRs, volume, recent sessions"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Dashboard API working perfectly. Returns comprehensive stats: current streak (1 day), total volume (892.5kg), workouts this month (1), account level (Novice). All calculations accurate and real-time updates working."
+- 
+-   - task: "Personal Records API"
+-     implemented: true
+-@@ -195,11 +216,14 @@ backend:
+-     file: "backend/server.py"
+-     stuck_count: 0
+-     priority: "medium"
+--    needs_retesting: true
+-+    needs_retesting: false
+-     status_history:
+-         - working: true
+-           agent: "main"
+-           comment: "GET /api/progress/prs - returns user's personal records, auto-detected during workout"
+-+        - working: true
+-+          agent: "testing"
+-+          comment: "✅ TESTED: Personal Records API working correctly. Retrieved 1 PR (Pull-up - 82.5kg MAX_WEIGHT). PR auto-detection during workout sessions working. Exercise names properly resolved. PR tracking and history accurate."
+- 
+- frontend:
+-   - task: "Login Screen"
+-@@ -325,20 +349,17 @@ frontend:
+- metadata:
+-   created_by: "main_agent"
+-   version: "1.0"
+--  test_sequence: 1
+-+  test_sequence: 2
+-   run_ui: false
+- 
+- test_plan:
+--  current_focus:
+--    - "User Registration API"
+--    - "User Login API"
+--    - "Exercise Library API"
+--    - "Routine CRUD API"
+--    - "Workout Session API"
+-+  current_focus: []
+-   stuck_tasks: []
+-   test_all: false
+-   test_priority: "high_first"
+- 
+- agent_communication:
+-     - agent: "main"
+--      message: "MVP implementation complete. Backend has auth, exercises, routines, sessions, and progress APIs. Frontend has all screens working. Please test backend APIs focusing on: 1) Auth flow (register, login, get user), 2) Exercises listing with filters, 3) Routine CRUD, 4) Workout session flow (start, add sets, complete). Use curl to test."
+-\ No newline at end of file
+-+      message: "MVP implementation complete. Backend has auth, exercises, routines, sessions, and progress APIs. Frontend has all screens working. Please test backend APIs focusing on: 1) Auth flow (register, login, get user), 2) Exercises listing with filters, 3) Routine CRUD, 4) Workout session flow (start, add sets, complete). Use curl to test."
+-+    - agent: "testing"
+-+      message: "✅ COMPREHENSIVE BACKEND TESTING COMPLETED - ALL SYSTEMS WORKING PERFECTLY! Tested all 8 backend APIs with 100% success rate. Authentication flow robust with proper JWT handling and error responses. Exercise library with 68 exercises, filtering, and search all functional. Routine CRUD operations working with proper exercise management. Workout session flow excellent with PR detection, volume tracking, and progress updates. Dashboard and PR APIs providing accurate real-time stats. All edge cases tested (invalid auth, duplicate users, unauthorized access). Backend is production-ready with no critical issues found."
+-\ No newline at end of file
 diff --git a/test_result.md b/test_result.md
-index 164eca5..36ab54a 100644
+index 89567d8..9bb3043 100644
 --- a/test_result.md
 +++ b/test_result.md
-@@ -111,11 +111,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "high"
--    needs_retesting: true
-+    needs_retesting: false
-     status_history:
+@@ -164,6 +164,9 @@ backend:
          - working: true
-           agent: "main"
-           comment: "POST /api/auth/register - registers new user with email, username, password, returns JWT token"
+           agent: "testing"
+           comment: "✅ TESTED: Exercise library fully functional. Retrieved 50+ exercises with proper pagination. Muscle filtering (Espalda) returns 10 exercises. Search functionality works (6 results for 'pull'). Muscle groups endpoint returns 10 categories. All filtering and search parameters working correctly."
 +        - working: true
 +          agent: "testing"
-+          comment: "✅ TESTED: User registration working perfectly. Created user 'sarah_fit' with JWT token. Proper validation for duplicate emails (400 error). All authentication fields returned correctly."
- 
-   - task: "User Login API"
-     implemented: true
-@@ -123,11 +126,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "high"
--    needs_retesting: true
-+    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "POST /api/auth/login - authenticates user with email/password, returns JWT token"
-+        - working: true
-+          agent: "testing"
-+          comment: "✅ TESTED: Login API working correctly. Successful authentication returns JWT token and user data. Invalid credentials properly return 401 error. Token format and user data structure validated."
- 
-   - task: "Get Current User API"
-     implemented: true
-@@ -135,11 +141,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "high"
--    needs_retesting: true
-+    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "GET /api/auth/me - returns authenticated user profile"
-+        - working: true
-+          agent: "testing"
-+          comment: "✅ TESTED: Get current user API working perfectly. Returns correct user profile with all fields (id, email, username, stats). Proper 403 error for unauthorized access. JWT authentication working correctly."
- 
-   - task: "Exercise Library API"
-     implemented: true
-@@ -147,11 +156,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "high"
--    needs_retesting: true
-+    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "GET /api/exercises - returns list of exercises with optional filters (muscle, equipment, search)"
-+        - working: true
-+          agent: "testing"
-+          comment: "✅ TESTED: Exercise library fully functional. Retrieved 50+ exercises with proper pagination. Muscle filtering (Espalda) returns 10 exercises. Search functionality works (6 results for 'pull'). Muscle groups endpoint returns 10 categories. All filtering and search parameters working correctly."
++          comment: "✅ UPDATED TESTING COMPLETE: Exercise library now contains exactly 441 exercises (updated from Excel file). Found 11 muscle groups including new 'Antebrazo' muscle group. Search functionality working perfectly (20 exercises found with 'pull'). Muscle filtering working correctly (50 exercises for 'Espalda'). All exercise data properly loaded from exercises_data.py."
  
    - task: "Routine CRUD API"
      implemented: true
-@@ -159,11 +171,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "high"
--    needs_retesting: true
+@@ -225,6 +228,51 @@ backend:
+           agent: "testing"
+           comment: "✅ TESTED: Personal Records API working correctly. Retrieved 1 PR (Pull-up - 82.5kg MAX_WEIGHT). PR auto-detection during workout sessions working. Exercise names properly resolved. PR tracking and history accurate."
+ 
++  - task: "Achievements API - Get All"
++    implemented: true
++    working: true
++    file: "backend/server.py"
++    stuck_count: 0
++    priority: "high"
 +    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "POST/GET/PUT/DELETE /api/routines - full CRUD for workout routines"
++    status_history:
++        - working: true
++          agent: "main"
++          comment: "GET /api/achievements - returns all available achievements (20 total)"
 +        - working: true
 +          agent: "testing"
-+          comment: "✅ TESTED: Routine CRUD operations working perfectly. Created 'Upper Body Power' routine with exercises. GET /routines returns user's routines correctly. Adding exercises to routines works with proper exercise order, sets, reps, and weight targets. All routine data persisted correctly."
- 
-   - task: "Workout Session API"
-     implemented: true
-@@ -171,11 +186,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "high"
--    needs_retesting: true
++          comment: "✅ TESTED: Achievements API working perfectly. Returns exactly 20 achievements with correct structure (id, code, name, description, category, points, rarity, criteria). All achievement data properly loaded from ACHIEVEMENTS_DATA."
++
++  - task: "Achievements API - User Achievements"
++    implemented: true
++    working: true
++    file: "backend/server.py"
++    stuck_count: 0
++    priority: "high"
 +    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "POST /api/sessions - start session, POST /api/sessions/{id}/sets - add set, POST /api/sessions/{id}/complete - finish workout"
++    status_history:
++        - working: true
++          agent: "main"
++          comment: "GET /api/achievements/user - returns user's unlocked achievements (requires auth)"
 +        - working: true
 +          agent: "testing"
-+          comment: "✅ TESTED: Workout session flow working excellently. Started session with routine. Added multiple sets with proper tracking (reps, weight, RPE). PR detection working (detected new 82.5kg PR). Session completion calculates duration and updates user stats. Total volume tracking accurate (892.5kg). All session data persisted correctly."
- 
-   - task: "Progress Dashboard API"
-     implemented: true
-@@ -183,11 +201,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "medium"
--    needs_retesting: true
++          comment: "✅ TESTED: User achievements API working correctly. Properly requires authentication. Returns user's unlocked achievements (0 for new user). Response structure correct with achievement details and unlock timestamps."
++
++  - task: "Achievements API - Check & Unlock"
++    implemented: true
++    working: true
++    file: "backend/server.py"
++    stuck_count: 0
++    priority: "high"
 +    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "GET /api/progress/dashboard - returns stats like streak, PRs, volume, recent sessions"
++    status_history:
++        - working: true
++          agent: "main"
++          comment: "POST /api/achievements/check - check and unlock achievements based on user progress (requires auth)"
 +        - working: true
 +          agent: "testing"
-+          comment: "✅ TESTED: Dashboard API working perfectly. Returns comprehensive stats: current streak (1 day), total volume (892.5kg), workouts this month (1), account level (Novice). All calculations accurate and real-time updates working."
- 
-   - task: "Personal Records API"
-     implemented: true
-@@ -195,11 +216,14 @@ backend:
-     file: "backend/server.py"
-     stuck_count: 0
-     priority: "medium"
--    needs_retesting: true
-+    needs_retesting: false
-     status_history:
-         - working: true
-           agent: "main"
-           comment: "GET /api/progress/prs - returns user's personal records, auto-detected during workout"
-+        - working: true
-+          agent: "testing"
-+          comment: "✅ TESTED: Personal Records API working correctly. Retrieved 1 PR (Pull-up - 82.5kg MAX_WEIGHT). PR auto-detection during workout sessions working. Exercise names properly resolved. PR tracking and history accurate."
- 
++          comment: "✅ TESTED: Achievement checking API working perfectly. Properly requires authentication. Returns newly_unlocked and total_unlocked counts. Achievement criteria evaluation working correctly based on user stats (workouts, PRs, volume, streak, level)."
++
  frontend:
    - task: "Login Screen"
-@@ -325,20 +349,17 @@ frontend:
- metadata:
-   created_by: "main_agent"
-   version: "1.0"
--  test_sequence: 1
-+  test_sequence: 2
+     implemented: true
+@@ -353,9 +401,7 @@ metadata:
    run_ui: false
  
  test_plan:
 -  current_focus:
--    - "User Registration API"
--    - "User Login API"
--    - "Exercise Library API"
--    - "Routine CRUD API"
--    - "Workout Session API"
+-    - "Exercise Library API - verify 441 exercises loaded"
+-    - "Achievements API - test all endpoints"
 +  current_focus: []
    stuck_tasks: []
    test_all: false
    test_priority: "high_first"
- 
- agent_communication:
+@@ -366,4 +412,6 @@ agent_communication:
+     - agent: "testing"
+       message: "✅ COMPREHENSIVE BACKEND TESTING COMPLETED - ALL SYSTEMS WORKING PERFECTLY! Tested all 8 backend APIs with 100% success rate. Authentication flow robust with proper JWT handling and error responses. Exercise library with 68 exercises, filtering, and search all functional. Routine CRUD operations working with proper exercise management. Workout session flow excellent with PR detection, volume tracking, and progress updates. Dashboard and PR APIs providing accurate real-time stats. All edge cases tested (invalid auth, duplicate users, unauthorized access). Backend is production-ready with no critical issues found."
      - agent: "main"
--      message: "MVP implementation complete. Backend has auth, exercises, routines, sessions, and progress APIs. Frontend has all screens working. Please test backend APIs focusing on: 1) Auth flow (register, login, get user), 2) Exercises listing with filters, 3) Routine CRUD, 4) Workout session flow (start, add sets, complete). Use curl to test."
+-      message: "UPDATED: Added complete Excel exercise data (441 exercises vs 68 before) and new Achievements system. New APIs added: GET /api/achievements (all achievements), GET /api/achievements/user (user's unlocked), POST /api/achievements/check (check & unlock). Also added reseed endpoint. Please verify: 1) Exercise count is now 441, 2) 11 muscle groups available, 3) Achievements endpoints working correctly."
 \ No newline at end of file
-+      message: "MVP implementation complete. Backend has auth, exercises, routines, sessions, and progress APIs. Frontend has all screens working. Please test backend APIs focusing on: 1) Auth flow (register, login, get user), 2) Exercises listing with filters, 3) Routine CRUD, 4) Workout session flow (start, add sets, complete). Use curl to test."
++      message: "UPDATED: Added complete Excel exercise data (441 exercises vs 68 before) and new Achievements system. New APIs added: GET /api/achievements (all achievements), GET /api/achievements/user (user's unlocked), POST /api/achievements/check (check & unlock). Also added reseed endpoint. Please verify: 1) Exercise count is now 441, 2) 11 muscle groups available, 3) Achievements endpoints working correctly."
 +    - agent: "testing"
-+      message: "✅ COMPREHENSIVE BACKEND TESTING COMPLETED - ALL SYSTEMS WORKING PERFECTLY! Tested all 8 backend APIs with 100% success rate. Authentication flow robust with proper JWT handling and error responses. Exercise library with 68 exercises, filtering, and search all functional. Routine CRUD operations working with proper exercise management. Workout session flow excellent with PR detection, volume tracking, and progress updates. Dashboard and PR APIs providing accurate real-time stats. All edge cases tested (invalid auth, duplicate users, unauthorized access). Backend is production-ready with no critical issues found."
++      message: "✅ UPDATED BACKEND TESTING COMPLETE - ALL NEW FEATURES WORKING PERFECTLY! Comprehensive testing of updated Exercise Library and new Achievements API completed with 100% success rate (13/13 tests passed). EXERCISE LIBRARY: Now contains exactly 441 exercises (updated from Excel), 11 muscle groups including new 'Antebrazo', search and filtering working perfectly. ACHIEVEMENTS API: All 3 endpoints working correctly - GET /achievements returns 20 achievements, GET /achievements/user returns user's unlocked achievements with auth, POST /achievements/check properly evaluates and unlocks achievements. AUTH & EXISTING APIs: All authentication flows, routines CRUD, and workout sessions working correctly. Backend is fully production-ready with no critical issues found."
 \ No newline at end of file
