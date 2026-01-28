@@ -1,16 +1,31 @@
-import { Text, View, StyleSheet, Image } from "react-native";
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '../src/store/authStore';
+import { Ionicons } from '@expo/vector-icons';
 
-const EXPO_PUBLIC_BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL;
+export default function SplashScreen() {
+  const router = useRouter();
+  const { isLoading, isAuthenticated } = useAuthStore();
 
-export default function Index() {
-  console.log(EXPO_PUBLIC_BACKEND_URL, "EXPO_PUBLIC_BACKEND_URL");
+  useEffect(() => {
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/login');
+      }
+    }
+  }, [isLoading, isAuthenticated]);
 
   return (
     <View style={styles.container}>
-      <Image
-        source={require("../assets/images/app-image.png")}
-        style={styles.image}
-      />
+      <View style={styles.logoContainer}>
+        <Ionicons name="fitness" size={80} color="#4F46E5" />
+        <Text style={styles.title}>ToDoApp Plus</Text>
+        <Text style={styles.subtitle}>Fitness & Task Management</Text>
+      </View>
+      <ActivityIndicator size="large" color="#4F46E5" style={styles.loader} />
     </View>
   );
 }
@@ -18,13 +33,25 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0c0c0c",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#0f0f1a',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  image: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "contain",
+  logoContainer: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginTop: 16,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginTop: 8,
+  },
+  loader: {
+    marginTop: 40,
   },
 });
