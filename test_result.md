@@ -228,6 +228,51 @@ backend:
           agent: "testing"
           comment: "✅ TESTED: Personal Records API working correctly. Retrieved 1 PR (Pull-up - 82.5kg MAX_WEIGHT). PR auto-detection during workout sessions working. Exercise names properly resolved. PR tracking and history accurate."
 
+  - task: "Achievements API - Get All"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "GET /api/achievements - returns all available achievements (20 total)"
+        - working: true
+          agent: "testing"
+          comment: "✅ TESTED: Achievements API working perfectly. Returns exactly 20 achievements with correct structure (id, code, name, description, category, points, rarity, criteria). All achievement data properly loaded from ACHIEVEMENTS_DATA."
+
+  - task: "Achievements API - User Achievements"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "GET /api/achievements/user - returns user's unlocked achievements (requires auth)"
+        - working: true
+          agent: "testing"
+          comment: "✅ TESTED: User achievements API working correctly. Properly requires authentication. Returns user's unlocked achievements (0 for new user). Response structure correct with achievement details and unlock timestamps."
+
+  - task: "Achievements API - Check & Unlock"
+    implemented: true
+    working: true
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: true
+          agent: "main"
+          comment: "POST /api/achievements/check - check and unlock achievements based on user progress (requires auth)"
+        - working: true
+          agent: "testing"
+          comment: "✅ TESTED: Achievement checking API working perfectly. Properly requires authentication. Returns newly_unlocked and total_unlocked counts. Achievement criteria evaluation working correctly based on user stats (workouts, PRs, volume, streak, level)."
+
 frontend:
   - task: "Login Screen"
     implemented: true
