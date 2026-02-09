@@ -1,8 +1,10 @@
-# 🏋️ ToDo-Fit Plus
+# 🏋️ ToDo-Fit Plus - DEMO SHOWCASE
 
 **Aplicación móvil de gestión de tareas y entrenamiento fitness integrado**
 
 Una app híbrida que combina gestión de tareas diarias con seguimiento completo de entrenamientos, permitiendo crear objetivos fitness que se autocompletan al lograrlos.
+
+> **📝 Nota**: Este repositorio contiene únicamente la documentación y demos visuales del proyecto. El código fuente se mantiene privado para protección de propiedad intelectual de cara al lanzamiento en producción.
 
 <div align="center">
 
@@ -18,14 +20,14 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 <table>
   <tr>
     <td align="center" width="50%">
-      <img src="frontend/assets/demo/Login.jpg" width="250" alt="Login"/>
+      <img src="assets/demo/Login.jpg" width="250" alt="Login"/>
       <br/>
       <b>Autenticación Segura</b>
       <br/>
       Sistema de login con JWT
     </td>
     <td align="center" width="50%">
-      <img src="frontend/assets/demo/Dashboard.jpg" width="250" alt="Dashboard"/>
+      <img src="assets/demo/Dashboard.jpg" width="250" alt="Dashboard"/>
       <br/>
       <b>Dashboard Principal</b>
       <br/>
@@ -38,7 +40,7 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 <table>
   <tr>
     <td align="center" width="100%">
-      <img src="frontend/assets/demo/Tasks.jpg" width="250" alt="Gestión de Tareas"/>
+      <img src="assets/demo/Tasks.jpg" width="250" alt="Gestión de Tareas"/>
       <br/>
       <b>Organiza tu Día</b>
       <br/>
@@ -51,21 +53,21 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 <table>
   <tr>
     <td align="center" width="33%">
-      <img src="frontend/assets/demo/Routines.jpg" width="250" alt="Rutinas"/>
+      <img src="assets/demo/Routines.jpg" width="250" alt="Rutinas"/>
       <br/>
       <b>Rutinas Personalizadas</b>
       <br/>
       Crea y edita tus entrenamientos
     </td>
     <td align="center" width="33%">
-      <img src="frontend/assets/demo/Create-routine.jpg" width="250" alt="Crear Rutina"/>
+      <img src="assets/demo/Create-routine.jpg" width="250" alt="Crear Rutina"/>
       <br/>
       <b>Constructor de Rutinas</b>
       <br/>
       Diseña workouts personalizados
     </td>
     <td align="center" width="33%">
-      <img src="frontend/assets/demo/Excersise-library.jpg" width="250" alt="Biblioteca de Ejercicios"/>
+      <img src="assets/demo/Excersise-library.jpg" width="250" alt="Biblioteca de Ejercicios"/>
       <br/>
       <b>Biblioteca de +100 Ejercicios</b>
       <br/>
@@ -78,21 +80,21 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 <table>
   <tr>
     <td align="center" width="33%">
-      <img src="frontend/assets/demo/Workout.jpg" width="250" alt="Entrenamiento Activo"/>
+      <img src="assets/demo/Workout.jpg" width="250" alt="Entrenamiento Activo"/>
       <br/>
       <b>Sesión en Vivo</b>
       <br/>
       Temporizador, series y seguimiento real-time
     </td>
     <td align="center" width="33%">
-      <img src="frontend/assets/demo/History.jpg" width="250" alt="Historial"/>
+      <img src="assets/demo/History.jpg" width="250" alt="Historial"/>
       <br/>
       <b>Historial Completo</b>
       <br/>
       Revisa todos tus entrenamientos pasados
     </td>
     <td align="center" width="33%">
-      <img src="frontend/assets/demo/Profile.jpg" width="250" alt="Perfil"/>
+      <img src="assets/demo/Profile.jpg" width="250" alt="Perfil"/>
       <br/>
       <b>Perfil de Usuario</b>
       <br/>
@@ -114,7 +116,7 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 
 ### 💪 Sistema de Entrenamiento
 - ✅ Crear y editar rutinas personalizadas
-- ✅ Biblioteca de +100 ejercicios clasificados
+- ✅ Biblioteca de +100 ejercicios clasificados por grupo muscular
 - ✅ Seguimiento de series, repeticiones y peso
 - ✅ Temporizador de descanso entre series
 - ✅ Historial completo de entrenamientos
@@ -127,151 +129,86 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 - ✅ Diseño responsive
 - ✅ Navegación por tabs intuitiva
 
+### 🔐 Seguridad
+- ✅ Autenticación JWT robusta
+- ✅ Encriptación de contraseñas con bcrypt
+- ✅ Validación de datos en frontend y backend
+- ✅ Manejo seguro de sesiones
+
 ---
 
-## 🚀 Instalación Rápida
-
-### Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn server:app --reload --host 0.0.0.0 --port 8000
-```
+## 🛠️ Stack Tecnológico
 
 ### Frontend
-```bash
-cd frontend
-npm install
-# Configurar EXPO_PUBLIC_API_URL en .env
-npm start
-```
+- **React Native** - Framework móvil multiplataforma
+- **Expo Router** - Navegación file-based
+- **Zustand** - State management minimalista
+- **TypeScript** - Type safety
+- **Axios** - HTTP client
+
+### Backend
+- **FastAPI** - Framework web Python moderno
+- **MongoDB** - Base de datos NoSQL
+- **Motor** - MongoDB async driver
+- **JWT** - Autenticación token-based
+- **bcrypt** - Hash de contraseñas
+- **Pydantic** - Validación de datos
+
+### DevOps (Próximamente)
+- **Railway/Render** - Deploy backend
+- **MongoDB Atlas** - Base de datos en la nube
+- **Expo EAS** - Build y distribución móvil
 
 ---
 
-## 📊 Estado del Proyecto
+## 🔮 Roadmap
 
-### ✅ Completado (v1.0.0)
+### 🎯 Próximas Funcionalidades
+- [ ] **IA Routine Builder** - Generación de rutinas con IA
+- [ ] **Estadísticas Avanzadas** - Gráficos de progreso y PRs
+- [ ] **Planificación Semanal** - Calendario de entrenamientos
+- [ ] **Modo Offline** - Sincronización automática
+- [ ] **Videos de Ejercicios** - Guías visuales
 
-**Funcionalidad Core**
-- [x] Autenticación JWT
-- [x] CRUD tareas (crear, editar, eliminar)
-- [x] CRUD rutinas (crear, editar, eliminar)
-- [x] Sesiones de entrenamiento completas
-- [x] Auto-completado de tareas fitness
-- [x] Historial de workouts
-
-**UI/UX**
-- [x] Tema oscuro completo
-- [x] Modales personalizados
-- [x] Validación de datos
-- [x] Manejo de errores
-- [x] Estados de carga
-
-**Optimización**
-- [x] Código limpio (sin console.logs)
-- [x] Lógica de auto-completado corregida
-- [x] Performance optimizations
-
----
-
-## 🔮 Próximas Funcionalidades
-
-### 🎯 Prioridad Alta
-- [ ] **IA Routine Builder** (pantalla creada, falta integración)
-  - Generación de rutinas con IA
-  - Análisis de objetivos y nivel
-  - Recomendaciones personalizadas
-  
-- [ ] **Estadísticas Avanzadas**
-  - Gráficos de progreso
-  - Personal Records (PRs)
-  - Volumen total por músculo
-
-- [ ] **Planificación Semanal**
-  - Calendario de entrenamientos
-  - Notificaciones
-  - Rutinas recurrentes
-
-### 🔧 Prioridad Media
-- [ ] Exportar/Importar datos
-- [ ] Modo offline completo
-- [ ] Personalización (temas, unidades)
-- [ ] Videos de ejercicios
-
-### 💡 Futuro
-- [ ] Social features
+### 🚀 En Desarrollo
+- [ ] Sistema de notificaciones push
+- [ ] Social features (compartir entrenamientos)
 - [ ] Integración con wearables
 - [ ] Nutrition tracking
 - [ ] Calculadora de 1RM
 
 ---
 
-## 📁 Estructura del Proyecto
+## 📊 Estado del Proyecto
 
-```
-todo-fit-plus/
-├── frontend/
-│   ├── app/
-│   │   ├── (tabs)/              # Navegación principal
-│   │   ├── active-workout.tsx   # Sesión activa
-│   │   ├── create-routine/      # Nueva rutina
-│   │   ├── edit-routine/        # Editar rutina
-│   │   ├── create-task.tsx      # Nueva tarea
-│   │   ├── edit-task/           # Editar tarea
-│   │   └── ai-routine-builder.tsx  # IA (próximamente)
-│   └── src/
-│       ├── services/            # API client
-│       ├── store/               # Zustand state
-│       └── types/               # TypeScript types
-│
-├── backend/
-│   ├── server.py               # FastAPI app
-│   ├── seed_exercises.py       # Data seeding
-│   └── requirements.txt
-│
-└── README.md
-```
+**Versión Actual**: 1.0.0 (Producción Ready)  
+**Estado**: ✅ Funcional y estable  
+**Última Actualización**: Febrero 2026
+
+### ✅ Completado
+- [x] Autenticación JWT
+- [x] CRUD tareas y rutinas
+- [x] Sesiones de entrenamiento
+- [x] Auto-completado de tareas fitness
+- [x] Historial de workouts
+- [x] UI/UX optimizada
 
 ---
 
-## 🛠️ Stack Tecnológico
+## 📞 Contacto
 
-**Frontend**: React Native, Expo Router, Zustand, Axios  
-**Backend**: FastAPI, MongoDB, JWT, Motor  
-**UI**: Tema oscuro personalizado, modales custom
+Para consultas sobre colaboración, demos en vivo o información adicional:
 
----
-
-## 📱 Uso
-
-### Entrenar
-1. Selecciona una rutina
-2. Completa series con peso/reps
-3. Usa el temporizador de descanso
-4. Finaliza para guardar progreso
-
-### Tareas Fitness
-1. Crea tarea tipo "Fitness"
-2. Define objetivo (ej: 3 entrenamientos/semana)
-3. Entrena normalmente
-4. La tarea se completa automáticamente
-
-### Editar Rutinas
-1. Long-press en rutina → "Editar"
-2. Agrega o quita ejercicios
-3. Ajusta series/reps/peso
-4. Guarda cambios
+- **GitHub**: [@Dan-iel-stack](https://github.com/Dan-iel-stack)
+- **Repositorio Demo**: [ToDo-Fit Plus Showcase](https://github.com/Dan-iel-stack/todo-fit-plus-showcase)
 
 ---
 
-## 🐛 Issues Conocidos
+## 📄 Licencia
 
-✅ Ninguno - Sistema estable para producción
+© 2026 ToDo-Fit Plus. Todos los derechos reservados.  
+El código fuente es propietario y no está disponible públicamente.
 
 ---
 
-**Última actualización**: 2026-02-07  
-**Versión**: 1.0.0 (Producción Ready)  
-**Estado**: ✅ Estable y completamente funcional
+**🏋️ Construyendo el futuro del fitness tracking - Una tarea a la vez**
