@@ -199,8 +199,8 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 
 Para consultas sobre colaboración, demos en vivo o información adicional:
 
-- **GitHub**: [@Dan-iel-stack](https://github.com/Dan-iel-stack)
-- **Repositorio Demo**: [ToDo-Fit Plus Showcase](https://github.com/Dan-iel-stack/todo-fit-plus-showcase)
+- **GitHub**: [@Dan13l-M](https://github.com/Dan13l-M)
+- **Repositorio Demo**: [ToDo-Fit Plus Showcase](https://github.com/Dan13l-M/todo-fit-plus-showcase)
 
 ---
 
