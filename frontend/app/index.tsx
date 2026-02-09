@@ -16,6 +16,7 @@ export default function SplashScreen() {
         router.replace('/login');
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, isAuthenticated]);
 
   return (

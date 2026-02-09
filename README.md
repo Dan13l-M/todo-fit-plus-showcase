@@ -4,6 +4,75 @@
 
 Una app híbrida que combina gestión de tareas diarias con seguimiento completo de entrenamientos, permitiendo crear objetivos fitness que se autocompletan al lograrlos.
 
+<div align="center">
+
+![Demo App](frontend/assets/demo/app-showcase.gif)
+
+**[📱 Ver Demo Completo](#-demo-visual)** | **[✨ Features](#-características-principales)** | **[🛠️ Tech Stack](#️-stack-tecnológico)**
+
+</div>
+
+---
+
+## 📱 Demo Visual
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/tasks.png" width="250" alt="Gestión de Tareas"/>
+      <br/>
+      <b>Gestión de Tareas</b>
+      <br/>
+      Organiza tu día con categorías y prioridades
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/workout.png" width="250" alt="Entrenamiento Activo"/>
+      <br/>
+      <b>Sesión de Entrenamiento</b>
+      <br/>
+      Temporizador, series y seguimiento en tiempo real
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/routines.png" width="250" alt="Rutinas"/>
+      <br/>
+      <b>Rutinas Personalizadas</b>
+      <br/>
+      +100 ejercicios clasificados por músculo
+    </td>
+  </tr>
+  <tr>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/history.png" width="250" alt="Historial"/>
+      <br/>
+      <b>Historial Completo</b>
+      <br/>
+      Revisa tu progreso y entrenamientos pasados
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/create-routine.png" width="250" alt="Crear Rutina"/>
+      <br/>
+      <b>Constructor de Rutinas</b>
+      <br/>
+      Diseña entrenamientos personalizados
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/dark-theme.png" width="250" alt="Tema Oscuro"/>
+      <br/>
+      <b>UI Moderna</b>
+      <br/>
+      Tema oscuro y modales personalizados
+    </td>
+  </tr>
+</table>
+
+### 🎯 Funcionalidad Destacada: Auto-Completado Fitness
+
+<div align="center">
+  <img src="frontend/assets/demo/auto-complete-demo.gif" width="300" alt="Auto-completado"/>
+  <br/>
+  <i>Las tareas fitness se completan automáticamente al alcanzar tus objetivos de entrenamiento</i>
+</div>
+
 ---
 
 ## ✨ Características Principales

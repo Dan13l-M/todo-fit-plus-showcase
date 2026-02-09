@@ -34,6 +34,7 @@ export default function SelectExercisesScreen() {
 
   useEffect(() => {
     filterExercises();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exercises, selectedMuscle, searchQuery]);
 
   const fetchData = async () => {

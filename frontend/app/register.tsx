@@ -33,6 +33,24 @@ export default function RegisterScreen() {
       return;
     }
     
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Por favor ingresa un correo válido');
+      return;
+    }
+    
+    // Validar username (sin espacios, mínimo 3 caracteres)
+    if (username.length < 3) {
+      Alert.alert('Error', 'El nombre de usuario debe tener al menos 3 caracteres');
+      return;
+    }
+    
+    if (/\s/.test(username)) {
+      Alert.alert('Error', 'El nombre de usuario no puede contener espacios');
+      return;
+    }
+    
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Las contraseñas no coinciden');
       return;
@@ -45,7 +63,7 @@ export default function RegisterScreen() {
     
     setLoading(true);
     try {
-      await register(email, username, password, fullName || undefined);
+      await register(email.toLowerCase().trim(), username.toLowerCase().trim(), password, fullName || undefined);
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Error', error.message);

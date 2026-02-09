@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   RefreshControl,
   ActivityIndicator,
   Alert,
+  Modal,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { routinesApi } from '../../src/services/api';
 import { Routine } from '../../src/types';
@@ -28,6 +29,9 @@ export default function RoutinesScreen() {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
+  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const fetchRoutines = async () => {
     try {
@@ -52,26 +56,37 @@ export default function RoutinesScreen() {
     fetchRoutines();
   };
 
-  const handleDeleteRoutine = (routine: Routine) => {
-    Alert.alert(
-      'Eliminar Rutina',
-      `¿Estás seguro de eliminar "${routine.name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await routinesApi.delete(routine.id);
-              fetchRoutines();
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar la rutina');
-            }
-          },
-        },
-      ]
-    );
+  const handleRoutineOptions = (routine: Routine) => {
+    setSelectedRoutine(routine);
+    setShowOptionsModal(true);
+  };
+
+  const handleEdit = () => {
+    setShowOptionsModal(false);
+    if (selectedRoutine) {
+      router.push({
+        pathname: '/edit-routine/[id]',
+        params: { id: selectedRoutine.id }
+      });
+    }
+  };
+
+  const handleDeleteRequest = () => {
+    setShowOptionsModal(false);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteRoutine = async () => {
+    if (!selectedRoutine) return;
+    
+    try {
+      await routinesApi.delete(selectedRoutine.id);
+      setShowDeleteModal(false);
+      setSelectedRoutine(null);
+      fetchRoutines();
+    } catch (err) {
+      Alert.alert('Error', 'No se pudo eliminar la rutina');
+    }
   };
 
   const renderRoutine = ({ item }: { item: Routine }) => {
@@ -84,7 +99,7 @@ export default function RoutinesScreen() {
           pathname: '/workout',
           params: { routineId: item.id }
         })}
-        onLongPress={() => handleDeleteRoutine(item)}
+        onLongPress={() => handleRoutineOptions(item)}
       >
         <View style={[styles.routineIcon, { backgroundColor: typeConfig.color }]}>
           <Ionicons name={typeConfig.icon as any} size={24} color="#fff" />
@@ -121,7 +136,20 @@ export default function RoutinesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Rutinas</Text>
+          <TouchableOpacity 
+            style={styles.aiButton}
+            onPress={() => router.push('/ai-routine-builder')}
+          >
+            <Ionicons name="sparkles" size={20} color="#fff" />
+            <Text style={styles.aiButtonText}>IA Builder</Text>
+          </TouchableOpacity>
+      </View>
+      
       <FlatList
         data={routines}
         renderItem={renderRoutine}
@@ -145,7 +173,53 @@ export default function RoutinesScreen() {
       >
         <Ionicons name="add" size={32} color="#fff" />
       </TouchableOpacity>
+
+      {/* Options Modal */}
+      <Modal visible={showOptionsModal} transparent animationType="fade" onRequestClose={() => setShowOptionsModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{selectedRoutine?.name}</Text>
+            <Text style={styles.modalSubtitle}>Selecciona una opción</Text>
+            
+            <TouchableOpacity style={styles.modalOption} onPress={handleEdit}>
+              <Ionicons name="create-outline" size={24} color="#3b82f6" />
+              <Text style={styles.modalOptionText}>Editar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.modalOption, styles.modalOptionDanger]} onPress={handleDeleteRequest}>
+              <Ionicons name="trash-outline" size={24} color="#ef4444" />
+              <Text style={[styles.modalOptionText, styles.modalOptionTextDanger]}>Eliminar</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.modalCancelButton} onPress={() => setShowOptionsModal(false)}>
+              <Text style={styles.modalCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal visible={showDeleteModal} transparent animationType="fade" onRequestClose={() => setShowDeleteModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Ionicons name="warning-outline" size={48} color="#ef4444" style={{ alignSelf: 'center', marginBottom: 16 }} />
+            <Text style={styles.modalTitle}>Eliminar Rutina</Text>
+            <Text style={styles.modalMessage}>¿Estás seguro de eliminar "{selectedRoutine?.name}"?</Text>
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={[styles.modalButton, styles.modalButtonSecondary]} onPress={() => setShowDeleteModal(false)}>
+                <Text style={styles.modalButtonTextSecondary}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={[styles.modalButton, styles.modalButtonDanger]} onPress={confirmDeleteRoutine}>
+                <Text style={styles.modalButtonText}>Eliminar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
+    </>
   );
 }
 
@@ -153,6 +227,36 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0f0f1a',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    backgroundColor: '#1a1a2e',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2d2d44',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  aiButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#8b5cf6',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    gap: 6,
+  },
+  aiButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -238,5 +342,94 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#1F2937',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#9ca3af',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#d1d5db',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#374151',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  modalOptionDanger: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  modalOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#3b82f6',
+    marginLeft: 12,
+  },
+  modalOptionTextDanger: {
+    color: '#ef4444',
+  },
+  modalCancelButton: {
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  modalCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#9ca3af',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonSecondary: {
+    backgroundColor: '#374151',
+  },
+  modalButtonDanger: {
+    backgroundColor: '#ef4444',
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  modalButtonTextSecondary: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#9ca3af',
   },
 });

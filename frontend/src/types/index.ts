@@ -78,6 +78,13 @@ export interface SessionExercise {
   exercise_order: number;
   sets: ExerciseSet[];
   completed_at?: string;
+  // Planning data (from routine template)
+  sets_planned?: number;
+  reps_planned?: number;
+  reps_min?: number;
+  reps_max?: number;
+  target_weight_kg?: number;
+  rest_seconds?: number;
 }
 
 export interface WorkoutSession {

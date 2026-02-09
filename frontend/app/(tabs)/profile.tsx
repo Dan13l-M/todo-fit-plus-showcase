@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,20 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../src/store/authStore';
+import { useWorkoutStore } from '../../src/store/workoutStore';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
+  const { clearSession } = useWorkoutStore();
+
+  // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const handleLogout = () => {
     Alert.alert(
@@ -25,8 +35,13 @@ export default function ProfileScreen() {
           text: 'Cerrar Sesión',
           style: 'destructive',
           onPress: async () => {
-            await logout();
-            router.replace('/login');
+            try {
+              clearSession(); // Limpiar sesión de workout
+              await logout();
+              // La redirección se hace automáticamente por el useEffect
+            } catch (error) {
+              console.log('Error al cerrar sesión:', error);
+            }
           },
         },
       ]

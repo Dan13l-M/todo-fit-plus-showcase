@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, AuthResponse } from '../types';
+import { User } from '../types';
 import { authApi } from '../services/api';
 
 interface AuthState {
@@ -34,7 +34,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Error al iniciar sesión');
+      // Manejar diferentes tipos de errores
+      if (error.response) {
+        const detail = error.response.data?.detail;
+        const status = error.response.status;
+        
+        // Errores específicos del backend
+        if (status === 401) {
+          // "Invalid email or password" del backend
+          throw new Error('Correo o contraseña incorrectos');
+        } else if (detail && typeof detail === 'string') {
+          throw new Error(detail);
+        } else {
+          throw new Error('Error al iniciar sesión. Verifica tus credenciales.');
+        }
+      } else if (error.request) {
+        throw new Error('No se pudo conectar con el servidor. Verifica tu conexión.');
+      } else {
+        throw new Error('Error inesperado. Intenta de nuevo.');
+      }
     }
   },
   
@@ -49,7 +67,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
       });
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || 'Error al registrarse');
+      // Manejar diferentes tipos de errores
+      if (error.response) {
+        const detail = error.response.data?.detail;
+        const status = error.response.status;
+        
+        // Errores específicos del backend (status 400)
+        if (detail === 'Email already registered') {
+          throw new Error('Este correo ya está registrado. Intenta iniciar sesión.');
+        } else if (detail === 'Username already taken') {
+          throw new Error('Este nombre de usuario ya está en uso. Elige otro.');
+        } else if (status === 400 && detail && typeof detail === 'string') {
+          throw new Error(detail);
+        } else if (detail && typeof detail === 'string') {
+          throw new Error(detail);
+        } else {
+          throw new Error('Error al registrarse. Verifica tus datos.');
+        }
+      } else if (error.request) {
+        throw new Error('No se pudo conectar con el servidor. Verifica tu conexión.');
+      } else {
+        throw new Error('Error inesperado. Intenta de nuevo.');
+      }
     }
   },
   
@@ -78,7 +117,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         isLoading: false,
       });
-    } catch (error) {
+    } catch (err: any) {
+      console.error('Auth check error:', err);
       await AsyncStorage.removeItem('token');
       set({
         user: null,

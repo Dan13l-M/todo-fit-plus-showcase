@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,14 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { routinesApi, sessionsApi } from '../../src/services/api';
+import { routinesApi, exercisesApi, sessionsApi } from '../../src/services/api';
 import { useWorkoutStore } from '../../src/store/workoutStore';
-import { Routine } from '../../src/types';
+import { Routine, Exercise } from '../../src/types';
 
 export default function WorkoutScreen() {
   const router = useRouter();
@@ -22,6 +24,13 @@ export default function WorkoutScreen() {
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Quick Start modal states
+  const [showQuickStartModal, setShowQuickStartModal] = useState(false);
+  const [allExercises, setAllExercises] = useState<Exercise[]>([]);
+  const [selectedExerciseIds, setSelectedExerciseIds] = useState<Set<string>>(new Set());
+  const [exerciseSearchQuery, setExerciseSearchQuery] = useState('');
+  const [loadingExercises, setLoadingExercises] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -47,19 +56,81 @@ export default function WorkoutScreen() {
   useFocusEffect(
     useCallback(() => {
       fetchData();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.routineId])
   );
 
   const handleStartWorkout = async (withRoutine: boolean) => {
+    if (withRoutine) {
+      // Start with selected routine
+      try {
+        if (!selectedRoutine) {
+          Alert.alert('Error', 'Selecciona una rutina');
+          return;
+        }
+        await useWorkoutStore.getState().startSession(selectedRoutine.id);
+        router.push('/active-workout');
+      } catch (error: any) {
+        Alert.alert('Error', error.message);
+      }
+    } else {
+      // Quick Start - show exercise selection modal
+      await handleOpenQuickStart();
+    }
+  };
+
+  const handleOpenQuickStart = async () => {
+    setLoadingExercises(true);
+    setShowQuickStartModal(true);
     try {
-      const sessionData = withRoutine && selectedRoutine 
-        ? { routine_id: selectedRoutine.id }
-        : {};
+      const exercises = await exercisesApi.getAll({ limit: 500 });
+      setAllExercises(exercises);
+    } catch (error) {
+      Alert.alert('Error', 'No se pudieron cargar los ejercicios');
+      setShowQuickStartModal(false);
+    } finally {
+      setLoadingExercises(false);
+    }
+  };
+
+  const toggleExerciseSelection = (exerciseId: string) => {
+    setSelectedExerciseIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(exerciseId)) {
+        newSet.delete(exerciseId);
+      } else {
+        newSet.add(exerciseId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleConfirmQuickStart = async () => {
+    if (selectedExerciseIds.size === 0) {
+      Alert.alert('Atención', 'Selecciona al menos un ejercicio');
+      return;
+    }
+
+    try {
+      // 1. Create session without routine_id
+      const session = await sessionsApi.start({});
       
-      await useWorkoutStore.getState().startSession(sessionData.routine_id);
+      // 2. Add all selected exercises
+      let order = 1;
+      for (const exerciseId of Array.from(selectedExerciseIds)) {
+        await sessionsApi.addExercise(session.id, exerciseId, order++);
+      }
+      
+      // 3. Reload active session in store
+      await loadActiveSession();
+      
+      // 4. Navigate to active workout
+      setShowQuickStartModal(false);
+      setSelectedExerciseIds(new Set());
+      setExerciseSearchQuery('');
       router.push('/active-workout');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert('Error', error.message || 'Error al iniciar Quick Start');
     }
   };
 
@@ -190,6 +261,101 @@ export default function WorkoutScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Quick Start Exercise Selection Modal */}
+      <Modal
+        visible={showQuickStartModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowQuickStartModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Selecciona Ejercicios</Text>
+            <TouchableOpacity onPress={() => {
+              setShowQuickStartModal(false);
+              setSelectedExerciseIds(new Set());
+              setExerciseSearchQuery('');
+            }}>
+              <Ionicons name="close" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
+
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar ejercicio..."
+            placeholderTextColor="#6b7280"
+            value={exerciseSearchQuery}
+            onChangeText={setExerciseSearchQuery}
+          />
+
+          <Text style={styles.selectionCount}>
+            {selectedExerciseIds.size} ejercicio{selectedExerciseIds.size !== 1 ? 's' : ''} seleccionado{selectedExerciseIds.size !== 1 ? 's' : ''}
+          </Text>
+
+          {loadingExercises ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#4F46E5" />
+              <Text style={styles.loadingText}>Cargando ejercicios...</Text>
+            </View>
+          ) : (
+            <ScrollView style={styles.exerciseList}>
+              {allExercises
+                .filter(ex =>
+                  exerciseSearchQuery.trim() === '' ||
+                  ex.name.toLowerCase().includes(exerciseSearchQuery.toLowerCase()) ||
+                  ex.muscle.toLowerCase().includes(exerciseSearchQuery.toLowerCase())
+                )
+                .map(exercise => {
+                  const isSelected = selectedExerciseIds.has(exercise.id);
+                  return (
+                    <TouchableOpacity
+                      key={exercise.id}
+                      style={[
+                        styles.exerciseListItem,
+                        isSelected && styles.exerciseListItemSelected
+                      ]}
+                      onPress={() => toggleExerciseSelection(exercise.id)}
+                    >
+                      <View style={styles.exerciseListItemContent}>
+                        <Text style={styles.exerciseListItemName}>{exercise.name}</Text>
+                        <Text style={styles.exerciseListItemMuscle}>{exercise.muscle}</Text>
+                      </View>
+                      <View style={styles.checkbox}>
+                        {isSelected && (
+                          <Ionicons name="checkmark" size={20} color="#4F46E5" />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+            </ScrollView>
+          )}
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowQuickStartModal(false);
+                setSelectedExerciseIds(new Set());
+                setExerciseSearchQuery('');
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.confirmButton,
+                selectedExerciseIds.size === 0 && styles.confirmButtonDisabled
+              ]}
+              onPress={handleConfirmQuickStart}
+              disabled={selectedExerciseIds.size === 0}
+            >
+              <Text style={styles.confirmButtonText}>Comenzar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -408,5 +574,119 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#0f0f1a',
+    padding: 20,
+    paddingTop: 60,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+  searchInput: {
+    backgroundColor: '#1a1a2e',
+    color: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#2d2d44',
+  },
+  selectionCount: {
+    color: '#4F46E5',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  exerciseList: {
+    flex: 1,
+    marginBottom: 16,
+  },
+  exerciseListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#1a1a2e',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  exerciseListItemSelected: {
+    backgroundColor: 'rgba(79, 70, 229, 0.2)',
+    borderWidth: 2,
+    borderColor: '#4F46E5',
+  },
+  exerciseListItemContent: {
+    flex: 1,
+  },
+  exerciseListItemName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  exerciseListItemMuscle: {
+    color: '#9ca3af',
+    fontSize: 14,
+  },
+  checkbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#4F46E5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingTop: 16,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2d2d44',
+  },
+  cancelButtonText: {
+    color: '#9ca3af',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: '#4F46E5',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#4a4a6a',
+    opacity: 0.5,
+  },
+  confirmButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loadingText: {
+    color: '#9ca3af',
+    fontSize: 16,
+    marginTop: 16,
   },
 });

@@ -37,6 +37,13 @@ export const authApi = {
     const response = await api.get('/auth/me');
     return response.data;
   },
+  
+  resetPassword: async (email: string, newPassword: string): Promise<{ message: string }> => {
+    const response = await api.post('/auth/reset-password', null, {
+      params: { email, new_password: newPassword }
+    });
+    return response.data;
+  },
 };
 
 // Exercises API
@@ -69,6 +76,11 @@ export const routinesApi = {
     return response.data;
   },
   
+  get: async (id: string): Promise<Routine> => {
+    const response = await api.get(`/routines/${id}`);
+    return response.data;
+  },
+  
   getById: async (id: string): Promise<Routine> => {
     const response = await api.get(`/routines/${id}`);
     return response.data;
@@ -79,20 +91,33 @@ export const routinesApi = {
     description?: string;
     routine_type: string;
     difficulty_level?: string;
-    exercises?: Array<{
+    exercises?: {
       exercise_id: string;
       exercise_order: number;
       sets_planned?: number;
       reps_planned?: number;
       target_weight_kg?: number;
       rest_seconds?: number;
-    }>;
+    }[];
   }): Promise<Routine> => {
     const response = await api.post('/routines', data);
     return response.data;
   },
   
-  update: async (id: string, data: { name?: string; description?: string; routine_type?: string; difficulty_level?: string }): Promise<Routine> => {
+  update: async (id: string, data: {
+    name?: string;
+    description?: string;
+    routine_type?: string;
+    difficulty_level?: string;
+    exercises?: {
+      exercise_id: string;
+      exercise_order: number;
+      sets_planned?: number;
+      reps_planned?: number;
+      target_weight_kg?: number;
+      rest_seconds?: number;
+    }[];
+  }): Promise<Routine> => {
     const response = await api.put(`/routines/${id}`, data);
     return response.data;
   },
@@ -139,7 +164,8 @@ export const sessionsApi = {
     try {
       const response = await api.get('/sessions/active/current');
       return response.data;
-    } catch (error) {
+    } catch (err) {
+      console.error('Error fetching active session:', err);
       return null;
     }
   },
@@ -160,9 +186,38 @@ export const sessionsApi = {
     return response.data;
   },
   
+  updateSet: async (sessionId: string, setId: string, setData: {
+    set_number: number;
+    reps_completed: number;
+    weight_kg: number;
+    rpe?: number;
+    is_warmup?: boolean;
+    is_failure?: boolean;
+    notes?: string;
+  }): Promise<any> => {
+    const response = await api.put(`/sessions/${sessionId}/sets/${setId}`, setData);
+    return response.data;
+  },
+  
+  deleteSet: async (sessionId: string, setId: string): Promise<void> => {
+    await api.delete(`/sessions/${sessionId}/sets/${setId}`);
+  },
+  
+  addExercise: async (sessionId: string, exerciseId: string, exerciseOrder: number): Promise<any> => {
+    const response = await api.post(`/sessions/${sessionId}/exercises`, {
+      exercise_id: exerciseId,
+      exercise_order: exerciseOrder,
+    });
+    return response.data;
+  },
+  
   complete: async (sessionId: string): Promise<WorkoutSession> => {
     const response = await api.post(`/sessions/${sessionId}/complete`);
     return response.data;
+  },
+  
+  delete: async (sessionId: string): Promise<void> => {
+    await api.delete(`/sessions/${sessionId}`);
   },
 };
 
@@ -210,6 +265,69 @@ export const achievementsApi = {
   
   checkAndUnlock: async (): Promise<{ newly_unlocked: any[]; total_unlocked: number }> => {
     const response = await api.post('/achievements/check');
+    return response.data;
+  },
+};
+
+// Tasks API
+export const tasksApi = {
+  getTasks: async (filters?: any): Promise<any[]> => {
+    const response = await api.get('/tasks', { params: filters });
+    return response.data;
+  },
+  
+  getTask: async (id: string): Promise<any> => {
+    const response = await api.get(`/tasks/${id}`);
+    return response.data;
+  },
+  
+  createTask: async (data: any): Promise<any> => {
+    const response = await api.post('/tasks', data);
+    return response.data;
+  },
+  
+  updateTask: async (id: string, data: any): Promise<any> => {
+    const response = await api.put(`/tasks/${id}`, data);
+    return response.data;
+  },
+  
+  deleteTask: async (id: string): Promise<void> => {
+    await api.delete(`/tasks/${id}`);
+  },
+  
+  toggleTask: async (id: string): Promise<any> => {
+    const response = await api.patch(`/tasks/${id}/toggle`);
+    return response.data;
+  },
+  
+  // Subtasks
+  addSubtask: async (taskId: string, title: string): Promise<any> => {
+    const response = await api.post(`/tasks/${taskId}/subtasks`, { title });
+    return response.data;
+  },
+  
+  toggleSubtask: async (taskId: string, subtaskId: string): Promise<any> => {
+    const response = await api.patch(`/tasks/${taskId}/subtasks/${subtaskId}/toggle`);
+    return response.data;
+  },
+  
+  deleteSubtask: async (taskId: string, subtaskId: string): Promise<void> => {
+    await api.delete(`/tasks/${taskId}/subtasks/${subtaskId}`);
+  },
+  
+  // Stats & Fitness
+  getStats: async (): Promise<any> => {
+    const response = await api.get('/tasks/stats');
+    return response.data;
+  },
+  
+  getFitnessSuggestions: async (): Promise<any> => {
+    const response = await api.get('/tasks/fitness-suggestions');
+    return response.data;
+  },
+  
+  checkFitnessProgress: async (): Promise<any> => {
+    const response = await api.post('/tasks/check-fitness-progress');
     return response.data;
   },
 };

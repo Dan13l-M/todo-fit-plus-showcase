@@ -30,9 +30,16 @@ export default function LoginScreen() {
       return;
     }
     
+    // Validar formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Por favor ingresa un correo válido');
+      return;
+    }
+    
     setLoading(true);
     try {
-      await login(email, password);
+      await login(email.toLowerCase().trim(), password);
       router.replace('/(tabs)');
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -96,6 +103,13 @@ export default function LoginScreen() {
             ) : (
               <Text style={styles.buttonText}>Iniciar Sesión</Text>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={() => router.push('/reset-password')}
+            style={styles.forgotPassword}
+          >
+            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
 
           <View style={styles.registerContainer}>
@@ -174,6 +188,15 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  forgotPassword: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    color: '#4F46E5',
+    fontSize: 14,
+    fontWeight: '500',
   },
   registerContainer: {
     flexDirection: 'row',
