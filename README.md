@@ -6,9 +6,7 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 
 <div align="center">
 
-![Demo App](frontend/assets/demo/app-showcase.gif)
-
-**[📱 Ver Demo Completo](#-demo-visual)** | **[✨ Features](#-características-principales)** | **[🛠️ Tech Stack](#️-stack-tecnológico)**
+**[📱 Ver Demo Visual](#-demo-visual)** | **[✨ Features](#-características-principales)** | **[🛠️ Tech Stack](#️-stack-tecnológico)**
 
 </div>
 
@@ -16,62 +14,92 @@ Una app híbrida que combina gestión de tareas diarias con seguimiento completo
 
 ## 📱 Demo Visual
 
+### 🔐 Login y Dashboard
 <table>
   <tr>
-    <td align="center" width="33%">
-      <img src="frontend/assets/demo/tasks.png" width="250" alt="Gestión de Tareas"/>
+    <td align="center" width="50%">
+      <img src="frontend/assets/demo/Login.jpg" width="250" alt="Login"/>
       <br/>
-      <b>Gestión de Tareas</b>
+      <b>Autenticación Segura</b>
       <br/>
-      Organiza tu día con categorías y prioridades
+      Sistema de login con JWT
     </td>
-    <td align="center" width="33%">
-      <img src="frontend/assets/demo/workout.png" width="250" alt="Entrenamiento Activo"/>
+    <td align="center" width="50%">
+      <img src="frontend/assets/demo/Dashboard.jpg" width="250" alt="Dashboard"/>
       <br/>
-      <b>Sesión de Entrenamiento</b>
+      <b>Dashboard Principal</b>
       <br/>
-      Temporizador, series y seguimiento en tiempo real
-    </td>
-    <td align="center" width="33%">
-      <img src="frontend/assets/demo/routines.png" width="250" alt="Rutinas"/>
-      <br/>
-      <b>Rutinas Personalizadas</b>
-      <br/>
-      +100 ejercicios clasificados por músculo
-    </td>
-  </tr>
-  <tr>
-    <td align="center" width="33%">
-      <img src="frontend/assets/demo/history.png" width="250" alt="Historial"/>
-      <br/>
-      <b>Historial Completo</b>
-      <br/>
-      Revisa tu progreso y entrenamientos pasados
-    </td>
-    <td align="center" width="33%">
-      <img src="frontend/assets/demo/create-routine.png" width="250" alt="Crear Rutina"/>
-      <br/>
-      <b>Constructor de Rutinas</b>
-      <br/>
-      Diseña entrenamientos personalizados
-    </td>
-    <td align="center" width="33%">
-      <img src="frontend/assets/demo/dark-theme.png" width="250" alt="Tema Oscuro"/>
-      <br/>
-      <b>UI Moderna</b>
-      <br/>
-      Tema oscuro y modales personalizados
+      Vista general de tu progreso
     </td>
   </tr>
 </table>
 
-### 🎯 Funcionalidad Destacada: Auto-Completado Fitness
+### 📋 Gestión de Tareas
+<table>
+  <tr>
+    <td align="center" width="100%">
+      <img src="frontend/assets/demo/Tasks.jpg" width="250" alt="Gestión de Tareas"/>
+      <br/>
+      <b>Organiza tu Día</b>
+      <br/>
+      Categorías: Trabajo, Personal, Fitness | Prioridades: Alta, Media, Baja
+    </td>
+  </tr>
+</table>
 
-<div align="center">
-  <img src="frontend/assets/demo/auto-complete-demo.gif" width="300" alt="Auto-completado"/>
-  <br/>
-  <i>Las tareas fitness se completan automáticamente al alcanzar tus objetivos de entrenamiento</i>
-</div>
+### 💪 Sistema de Entrenamiento
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/Routines.jpg" width="250" alt="Rutinas"/>
+      <br/>
+      <b>Rutinas Personalizadas</b>
+      <br/>
+      Crea y edita tus entrenamientos
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/Create-routine.jpg" width="250" alt="Crear Rutina"/>
+      <br/>
+      <b>Constructor de Rutinas</b>
+      <br/>
+      Diseña workouts personalizados
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/Excersise-library.jpg" width="250" alt="Biblioteca de Ejercicios"/>
+      <br/>
+      <b>Biblioteca de +100 Ejercicios</b>
+      <br/>
+      Clasificados por grupo muscular
+    </td>
+  </tr>
+</table>
+
+### 🏋️ Workout Activo e Historial
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/Workout.jpg" width="250" alt="Entrenamiento Activo"/>
+      <br/>
+      <b>Sesión en Vivo</b>
+      <br/>
+      Temporizador, series y seguimiento real-time
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/History.jpg" width="250" alt="Historial"/>
+      <br/>
+      <b>Historial Completo</b>
+      <br/>
+      Revisa todos tus entrenamientos pasados
+    </td>
+    <td align="center" width="33%">
+      <img src="frontend/assets/demo/Profile.jpg" width="250" alt="Perfil"/>
+      <br/>
+      <b>Perfil de Usuario</b>
+      <br/>
+      Configuración y estadísticas
+    </td>
+  </tr>
+</table>
 
 ---
 
