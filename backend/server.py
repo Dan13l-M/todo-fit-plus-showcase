@@ -8,36 +8,52 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import os
 import uuid
-import logging
+import sys
 import jwt
 import bcrypt
 from dotenv import load_dotenv
+from loguru import logger
 
 # Import exercise and achievement data from Excel file
 from exercises_data import EXERCISES_DATA, ACHIEVEMENTS_DATA
 
 load_dotenv()
 
+# Configure structured logging with loguru
+logger.remove()  # Remove default handler
+logger.add(
+    sys.stderr,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    level="INFO",
+    colorize=True,
+)
+logger.add(
+    "logs/app_{time:YYYY-MM-DD}.log",
+    rotation="00:00",
+    retention="30 days",
+    compression="zip",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+    level="DEBUG",
+)
+
 # MongoDB connection
 MONGO_URL = os.getenv("MONGO_URL", "mongodb://localhost:27017")
 DB_NAME = os.getenv("DB_NAME", "todoapp_fitness")
-JWT_SECRET = os.getenv("JWT_SECRET", "your-super-secret-key-change-in-production")
+
+# JWT Configuration - REQUIRED
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    raise ValueError("JWT_SECRET environment variable is required. Please set it in your .env file.")
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
 
+# MongoDB client
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
 app = FastAPI(title="ToDoApp Plus - Fitness API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -152,6 +168,7 @@ class RoutineUpdate(BaseModel):
     description: Optional[str] = None
     routine_type: Optional[str] = None
     difficulty_level: Optional[str] = None
+    exercises: Optional[List[RoutineExerciseCreate]] = None
 
 class RoutineResponse(BaseModel):
     id: str
@@ -198,6 +215,13 @@ class SessionExerciseResponse(BaseModel):
     exercise_order: int
     sets: List[ExerciseSetResponse] = []
     completed_at: Optional[datetime]
+    # Planning data from routine (if loaded from routine)
+    sets_planned: Optional[int] = None
+    reps_planned: Optional[int] = None
+    reps_min: Optional[int] = None
+    reps_max: Optional[int] = None
+    target_weight_kg: Optional[float] = None
+    rest_seconds: Optional[int] = None
 
 class WorkoutSessionCreate(BaseModel):
     routine_id: Optional[str] = None
@@ -241,6 +265,86 @@ class DashboardStats(BaseModel):
     prs_this_month: int
     account_level: str
     recent_sessions: List[WorkoutSessionResponse] = []
+
+# Task Models
+class Subtask(BaseModel):
+    id: str
+    title: str
+    completed: bool = False
+
+class SubtaskCreate(BaseModel):
+    title: str
+
+class FitnessMetadata(BaseModel):
+    routine_id: Optional[str] = None
+    exercise_id: Optional[str] = None
+    target_weight: Optional[float] = None
+    target_reps: Optional[int] = None
+    achievement_code: Optional[str] = None
+    workouts_per_week: Optional[int] = None
+
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    priority: str = "medium"  # low, medium, high, urgent
+    status: str = "todo"  # todo, in_progress, completed, cancelled
+    due_date: Optional[datetime] = None
+    category: Optional[str] = None  # personal, work, fitness, health, shopping, other
+    tags: List[str] = []
+    is_recurring: bool = False
+    recurrence_pattern: Optional[str] = None  # daily, weekly, monthly, custom
+    recurrence_days: List[int] = []  # [1,3,5] for Mon, Wed, Fri
+    subtasks: List[Subtask] = []
+    linked_to_fitness: bool = False
+    fitness_link_type: Optional[str] = None  # workout_goal, routine_reminder, pr_goal, achievement_goal
+    fitness_metadata: Optional[FitnessMetadata] = None
+    reminder_enabled: bool = False
+    reminder_time: Optional[datetime] = None
+    order: int = 0
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    priority: Optional[str] = None
+    status: Optional[str] = None
+    due_date: Optional[datetime] = None
+    category: Optional[str] = None
+    tags: Optional[List[str]] = None
+    is_recurring: Optional[bool] = None
+    recurrence_pattern: Optional[str] = None
+    recurrence_days: Optional[List[int]] = None
+    subtasks: Optional[List[Subtask]] = None
+    linked_to_fitness: Optional[bool] = None
+    fitness_link_type: Optional[str] = None
+    fitness_metadata: Optional[FitnessMetadata] = None
+    reminder_enabled: Optional[bool] = None
+    reminder_time: Optional[datetime] = None
+    order: Optional[int] = None
+
+class TaskResponse(BaseModel):
+    id: str
+    user_id: str
+    title: str
+    description: Optional[str]
+    completed: bool
+    priority: str
+    status: str
+    created_at: datetime
+    updated_at: datetime
+    due_date: Optional[datetime]
+    completed_at: Optional[datetime]
+    category: Optional[str]
+    tags: List[str]
+    is_recurring: bool
+    recurrence_pattern: Optional[str]
+    recurrence_days: List[int]
+    subtasks: List[Subtask]
+    linked_to_fitness: bool
+    fitness_link_type: Optional[str]
+    fitness_metadata: Optional[FitnessMetadata]
+    reminder_enabled: bool
+    reminder_time: Optional[datetime]
+    order: int
 
 # ==================== AUTH ENDPOINTS ====================
 
@@ -340,6 +444,28 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         created_at=current_user["created_at"]
     )
 
+# Reset Password (simplified version without email)
+@api_router.post("/auth/reset-password")
+async def reset_password(email: str, new_password: str):
+    """
+    Reset password for a user (simplified - no email verification)
+    In production, this should send an email with a reset token
+    """
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Update password
+    await db.users.update_one(
+        {"_id": user["_id"]},
+        {"$set": {
+            "password_hash": hash_password(new_password),
+            "updated_at": datetime.utcnow()
+        }}
+    )
+    
+    return {"message": "Password reset successfully"}
+
 # ==================== EXERCISES ENDPOINTS ====================
 
 @api_router.get("/exercises", response_model=List[ExerciseResponse])
@@ -348,7 +474,7 @@ async def get_exercises(
     equipment: Optional[str] = None,
     pattern: Optional[str] = None,
     search: Optional[str] = None,
-    limit: int = 50,
+    limit: int = 500,
     skip: int = 0
 ):
     query = {}
@@ -599,6 +725,31 @@ async def update_routine(
         {"$set": update_dict}
     )
     
+    # Update exercises if provided
+    if update_data.exercises is not None:
+        # Delete existing routine_exercises
+        await db.routine_exercises.delete_many({"routine_id": routine_id})
+        
+        # Insert new exercises
+        for exercise_data in update_data.exercises:
+            exercise_doc = await db.exercises.find_one({"_id": ObjectId(exercise_data.exercise_id)})
+            if not exercise_doc:
+                continue
+            
+            await db.routine_exercises.insert_one({
+                "routine_id": routine_id,
+                "exercise_id": exercise_data.exercise_id,
+                "exercise_name": exercise_doc["name"],
+                "exercise_order": exercise_data.exercise_order,
+                "sets_planned": exercise_data.sets_planned,
+                "reps_planned": exercise_data.reps_planned,
+                "reps_min": exercise_data.reps_min,
+                "reps_max": exercise_data.reps_max,
+                "target_weight_kg": exercise_data.target_weight_kg,
+                "rest_seconds": exercise_data.rest_seconds,
+                "notes": exercise_data.notes
+            })
+    
     return await get_routine(routine_id, current_user)
 
 @api_router.delete("/routines/{routine_id}")
@@ -700,6 +851,7 @@ async def start_workout_session(
 ):
     routine = None
     routine_name = None
+    routine_exercises = []
     
     if session_data.routine_id:
         routine = await db.routines.find_one({
@@ -708,6 +860,31 @@ async def start_workout_session(
         })
         if routine:
             routine_name = routine["name"]
+            
+            # Load exercises from the routine
+            exercises_from_routine = await db.routine_exercises.find({
+                "routine_id": session_data.routine_id
+            }).sort("exercise_order", 1).to_list(50)
+            
+            for ex in exercises_from_routine:
+                # Get exercise details
+                exercise = await db.exercises.find_one({"_id": ObjectId(ex["exercise_id"])})
+                if exercise:
+                    routine_exercises.append(SessionExerciseResponse(
+                        id=str(ex["_id"]),  # Use routine_exercise _id as temporary id
+                        exercise_id=ex["exercise_id"],
+                        exercise_name=exercise["name"],
+                        exercise_order=ex["exercise_order"],
+                        sets=[],
+                        completed_at=None,
+                        # Include planning data
+                        sets_planned=ex.get("sets_planned"),
+                        reps_planned=ex.get("reps_planned"),
+                        reps_min=ex.get("reps_min"),
+                        reps_max=ex.get("reps_max"),
+                        target_weight_kg=ex.get("target_weight_kg"),
+                        rest_seconds=ex.get("rest_seconds", 90)
+                    ))
     
     session_dict = {
         "user_id": str(current_user["_id"]),
@@ -726,6 +903,8 @@ async def start_workout_session(
     
     result = await db.workout_sessions.insert_one(session_dict)
     
+    logger.info(f"Started workout session {result.inserted_id} with {len(routine_exercises)} exercises from routine {session_data.routine_id}")
+    
     return WorkoutSessionResponse(
         id=str(result.inserted_id),
         user_id=str(current_user["_id"]),
@@ -740,7 +919,7 @@ async def start_workout_session(
         total_reps=0,
         is_completed=False,
         notes=session_data.notes,
-        exercises=[]
+        exercises=routine_exercises
     )
 
 @api_router.post("/sessions/{session_id}/sets", response_model=ExerciseSetResponse)
@@ -863,6 +1042,183 @@ async def add_set_to_session(
         completed_at=exercise_set["completed_at"],
         notes=set_data.set_data.notes
     )
+
+@api_router.put("/sessions/{session_id}/sets/{set_id}", response_model=ExerciseSetResponse)
+async def update_set_in_session(
+    session_id: str,
+    set_id: str,
+    set_data: ExerciseSetCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    # Verify session exists and belongs to user
+    session = await db.workout_sessions.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.get("is_completed"):
+        raise HTTPException(status_code=400, detail="Cannot update sets in completed session")
+    
+    # Get existing set
+    existing_set = await db.exercise_sets.find_one({"_id": ObjectId(set_id)})
+    if not existing_set:
+        raise HTTPException(status_code=404, detail="Set not found")
+    
+    # Calculate volume difference for session totals
+    old_volume = existing_set["weight_kg"] * existing_set["reps_completed"] if not existing_set.get("is_warmup") else 0
+    new_volume = set_data.weight_kg * set_data.reps_completed if not set_data.is_warmup else 0
+    volume_diff = new_volume - old_volume
+    
+    old_reps = existing_set["reps_completed"] if not existing_set.get("is_warmup") else 0
+    new_reps = set_data.reps_completed if not set_data.is_warmup else 0
+    reps_diff = new_reps - old_reps
+    
+    # Update the set
+    await db.exercise_sets.update_one(
+        {"_id": ObjectId(set_id)},
+        {
+            "$set": {
+                "reps_completed": set_data.reps_completed,
+                "weight_kg": set_data.weight_kg,
+                "rpe": set_data.rpe,
+                "is_warmup": set_data.is_warmup,
+                "is_failure": set_data.is_failure,
+                "notes": set_data.notes
+            }
+        }
+    )
+    
+    # Update session totals if needed
+    if volume_diff != 0 or reps_diff != 0:
+        await db.workout_sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {
+                "$inc": {
+                    "total_volume_kg": volume_diff,
+                    "total_reps": reps_diff
+                }
+            }
+        )
+    
+    # Get updated set
+    updated_set = await db.exercise_sets.find_one({"_id": ObjectId(set_id)})
+    
+    return ExerciseSetResponse(
+        id=str(updated_set["_id"]),
+        set_number=updated_set["set_number"],
+        reps_completed=updated_set["reps_completed"],
+        weight_kg=updated_set["weight_kg"],
+        rpe=updated_set.get("rpe"),
+        is_warmup=updated_set.get("is_warmup", False),
+        is_failure=updated_set.get("is_failure", False),
+        is_pr=updated_set.get("is_pr", False),
+        completed_at=updated_set["completed_at"],
+        notes=updated_set.get("notes")
+    )
+
+@api_router.delete("/sessions/{session_id}/sets/{set_id}")
+async def delete_set_from_session(
+    session_id: str,
+    set_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    # Verify session exists and belongs to user
+    session = await db.workout_sessions.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.get("is_completed"):
+        raise HTTPException(status_code=400, detail="Cannot delete sets from completed session")
+    
+    # Get existing set
+    existing_set = await db.exercise_sets.find_one({"_id": ObjectId(set_id)})
+    if not existing_set:
+        raise HTTPException(status_code=404, detail="Set not found")
+    
+    # Calculate volume to subtract (only if not warmup)
+    volume_to_subtract = 0
+    reps_to_subtract = 0
+    if not existing_set.get("is_warmup"):
+        volume_to_subtract = existing_set["weight_kg"] * existing_set["reps_completed"]
+        reps_to_subtract = existing_set["reps_completed"]
+    
+    # Delete the set
+    await db.exercise_sets.delete_one({"_id": ObjectId(set_id)})
+    
+    # Update session totals
+    if volume_to_subtract > 0 or reps_to_subtract > 0:
+        await db.workout_sessions.update_one(
+            {"_id": ObjectId(session_id)},
+            {
+                "$inc": {
+                    "total_volume_kg": -volume_to_subtract,
+                    "total_sets": -1,
+                    "total_reps": -reps_to_subtract
+                }
+            }
+        )
+    
+    logger.info(f"Deleted set {set_id} from session {session_id}")
+    
+    return {"success": True, "message": "Set deleted successfully"}
+
+@api_router.post("/sessions/{session_id}/exercises")
+async def add_exercise_to_session(
+    session_id: str,
+    exercise_data: SessionExerciseCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    # Verify session exists and belongs to user
+    session = await db.workout_sessions.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    if session.get("is_completed"):
+        raise HTTPException(status_code=400, detail="Cannot add exercises to completed session")
+    
+    # Verify exercise exists
+    exercise = await db.exercises.find_one({"_id": ObjectId(exercise_data.exercise_id)})
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Exercise not found")
+    
+    # Check if exercise already exists in this session
+    existing = await db.session_exercises.find_one({
+        "session_id": session_id,
+        "exercise_id": exercise_data.exercise_id
+    })
+    
+    if existing:
+        raise HTTPException(status_code=400, detail="Exercise already in this session")
+    
+    # Create session exercise
+    session_exercise_dict = {
+        "session_id": session_id,
+        "exercise_id": exercise_data.exercise_id,
+        "exercise_order": exercise_data.exercise_order,
+        "created_at": datetime.utcnow()
+    }
+    
+    result = await db.session_exercises.insert_one(session_exercise_dict)
+    
+    logger.info(f"Added exercise {exercise_data.exercise_id} to session {session_id}")
+    
+    return {
+        "id": str(result.inserted_id),
+        "exercise_id": exercise_data.exercise_id,
+        "exercise_name": exercise["name"],
+        "exercise_order": exercise_data.exercise_order
+    }
 
 @api_router.post("/sessions/{session_id}/complete", response_model=WorkoutSessionResponse)
 async def complete_workout_session(
@@ -992,39 +1348,141 @@ async def get_session(session_id: str, current_user: dict = Depends(get_current_
     }).sort("exercise_order", 1).to_list(50)
     
     exercises_response = []
-    for se in session_exercises:
-        exercise = await db.exercises.find_one({"_id": ObjectId(se["exercise_id"])})
-        exercise_name = exercise["name"] if exercise else "Unknown"
+    
+    # If no session_exercises yet but routine_id exists, load from routine
+    if not session_exercises and session.get("routine_id"):
+        logger.info(f"No session_exercises found, loading from routine {session.get('routine_id')}")
+        routine_exercises = await db.routine_exercises.find({
+            "routine_id": session.get("routine_id")
+        }).sort("exercise_order", 1).to_list(50)
         
-        # Get sets for this exercise
-        sets = await db.exercise_sets.find({
-            "session_exercise_id": str(se["_id"])
-        }).sort("set_number", 1).to_list(20)
-        
-        sets_response = [
-            ExerciseSetResponse(
-                id=str(s["_id"]),
-                set_number=s["set_number"],
-                reps_completed=s["reps_completed"],
-                weight_kg=s["weight_kg"],
-                rpe=s.get("rpe"),
-                is_warmup=s.get("is_warmup", False),
-                is_failure=s.get("is_failure", False),
-                is_pr=s.get("is_pr", False),
-                completed_at=s["completed_at"],
-                notes=s.get("notes")
-            )
-            for s in sets
-        ]
-        
-        exercises_response.append(SessionExerciseResponse(
-            id=str(se["_id"]),
-            exercise_id=se["exercise_id"],
-            exercise_name=exercise_name,
-            exercise_order=se["exercise_order"],
-            sets=sets_response,
-            completed_at=se.get("completed_at")
-        ))
+        for rex in routine_exercises:
+            exercise = await db.exercises.find_one({"_id": ObjectId(rex["exercise_id"])})
+            if exercise:
+                exercises_response.append(SessionExerciseResponse(
+                    id=str(rex["_id"]),  # Use routine_exercise _id as temporary id
+                    exercise_id=rex["exercise_id"],
+                    exercise_name=exercise["name"],
+                    exercise_order=rex["exercise_order"],
+                    sets=[],
+                    completed_at=None,
+                    # Include planning data
+                    sets_planned=rex.get("sets_planned"),
+                    reps_planned=rex.get("reps_planned"),
+                    reps_min=rex.get("reps_min"),
+                    reps_max=rex.get("reps_max"),
+                    target_weight_kg=rex.get("target_weight_kg"),
+                    rest_seconds=rex.get("rest_seconds", 90)
+                ))
+    else:
+        # Load ALL exercises from routine, merge with session_exercises data
+        if session.get("routine_id"):
+            routine_exercises = await db.routine_exercises.find({
+                "routine_id": session.get("routine_id")
+            }).sort("exercise_order", 1).to_list(50)
+            
+            # Create map of session_exercises by exercise_id
+            session_exercises_map = {se["exercise_id"]: se for se in session_exercises}
+            
+            for rex in routine_exercises:
+                exercise = await db.exercises.find_one({"_id": ObjectId(rex["exercise_id"])})
+                if not exercise:
+                    continue
+                
+                # Check if this exercise has session_exercises
+                se = session_exercises_map.get(rex["exercise_id"])
+                
+                if se:
+                    # Exercise has sets, load them
+                    sets = await db.exercise_sets.find({
+                        "session_exercise_id": str(se["_id"])
+                    }).sort("set_number", 1).to_list(20)
+                    
+                    sets_response = [
+                        ExerciseSetResponse(
+                            id=str(s["_id"]),
+                            set_number=s["set_number"],
+                            reps_completed=s["reps_completed"],
+                            weight_kg=s["weight_kg"],
+                            rpe=s.get("rpe"),
+                            is_warmup=s.get("is_warmup", False),
+                            is_failure=s.get("is_failure", False),
+                            is_pr=s.get("is_pr", False),
+                            completed_at=s["completed_at"],
+                            notes=s.get("notes")
+                        )
+                        for s in sets
+                    ]
+                    
+                    exercises_response.append(SessionExerciseResponse(
+                        id=str(se["_id"]),
+                        exercise_id=rex["exercise_id"],
+                        exercise_name=exercise["name"],
+                        exercise_order=rex["exercise_order"],
+                        sets=sets_response,
+                        completed_at=se.get("completed_at"),
+                        # Include planning data from routine
+                        sets_planned=rex.get("sets_planned"),
+                        reps_planned=rex.get("reps_planned"),
+                        reps_min=rex.get("reps_min"),
+                        reps_max=rex.get("reps_max"),
+                        target_weight_kg=rex.get("target_weight_kg"),
+                        rest_seconds=rex.get("rest_seconds", 90)
+                    ))
+                else:
+                    # Exercise has no sets yet, return with empty sets
+                    exercises_response.append(SessionExerciseResponse(
+                        id=str(rex["_id"]),  # Use routine_exercise _id
+                        exercise_id=rex["exercise_id"],
+                        exercise_name=exercise["name"],
+                        exercise_order=rex["exercise_order"],
+                        sets=[],
+                        completed_at=None,
+                        # Include planning data from routine
+                        sets_planned=rex.get("sets_planned"),
+                        reps_planned=rex.get("reps_planned"),
+                        reps_min=rex.get("reps_min"),
+                        reps_max=rex.get("reps_max"),
+                        target_weight_kg=rex.get("target_weight_kg"),
+                        rest_seconds=rex.get("rest_seconds", 90)
+                    ))
+        else:
+            # No routine_id, just load session_exercises
+            for se in session_exercises:
+                exercise = await db.exercises.find_one({"_id": ObjectId(se["exercise_id"])})
+                exercise_name = exercise["name"] if exercise else "Unknown"
+                
+                # Get sets for this exercise
+                sets = await db.exercise_sets.find({
+                    "session_exercise_id": str(se["_id"])
+                }).sort("set_number", 1).to_list(20)
+                
+                sets_response = [
+                    ExerciseSetResponse(
+                        id=str(s["_id"]),
+                        set_number=s["set_number"],
+                        reps_completed=s["reps_completed"],
+                        weight_kg=s["weight_kg"],
+                        rpe=s.get("rpe"),
+                        is_warmup=s.get("is_warmup", False),
+                        is_failure=s.get("is_failure", False),
+                        is_pr=s.get("is_pr", False),
+                        completed_at=s["completed_at"],
+                        notes=s.get("notes")
+                    )
+                    for s in sets
+                ]
+                
+                exercises_response.append(SessionExerciseResponse(
+                    id=str(se["_id"]),
+                    exercise_id=se["exercise_id"],
+                    exercise_name=exercise_name,
+                    exercise_order=se["exercise_order"],
+                    sets=sets_response,
+                    completed_at=se.get("completed_at")
+                ))
+    
+    logger.info(f"get_session returning {len(exercises_response)} exercises for session {session_id}")
     
     return WorkoutSessionResponse(
         id=str(session["_id"]),
@@ -1092,6 +1550,31 @@ async def get_active_session(current_user: dict = Depends(get_current_user)):
         return None
     
     return await get_session(str(session["_id"]), current_user)
+
+# Delete/Cancel workout session
+@api_router.delete("/sessions/{session_id}")
+async def delete_workout_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    session = await db.workout_sessions.find_one({
+        "_id": ObjectId(session_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    # Delete all exercise sets for this session
+    await db.exercise_sets.delete_many({"session_id": session_id})
+    
+    # Delete all session exercises
+    await db.session_exercises.delete_many({"session_id": session_id})
+    
+    # Delete the session
+    await db.workout_sessions.delete_one({"_id": ObjectId(session_id)})
+    
+    return {"message": "Workout session deleted successfully"}
 
 # ==================== PROGRESS & STATS ENDPOINTS ====================
 
@@ -1355,7 +1838,875 @@ async def check_and_unlock_achievements(current_user: dict = Depends(get_current
         "total_unlocked": len(user_achievement_ids) + len(newly_unlocked)
     }
 
+# ==================== TASK ENDPOINTS ====================
+
+@api_router.post("/tasks", response_model=TaskResponse)
+async def create_task(task_data: TaskCreate, current_user: dict = Depends(get_current_user)):
+    """Create a new task"""
+    task_dict = {
+        "user_id": str(current_user["_id"]),
+        "title": task_data.title,
+        "description": task_data.description,
+        "completed": False,
+        "priority": task_data.priority,
+        "status": task_data.status,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "due_date": task_data.due_date,
+        "completed_at": None,
+        "category": task_data.category,
+        "tags": task_data.tags,
+        "is_recurring": task_data.is_recurring,
+        "recurrence_pattern": task_data.recurrence_pattern,
+        "recurrence_days": task_data.recurrence_days,
+        "subtasks": [s.dict() for s in task_data.subtasks],
+        "linked_to_fitness": task_data.linked_to_fitness,
+        "fitness_link_type": task_data.fitness_link_type,
+        "fitness_metadata": task_data.fitness_metadata.dict() if task_data.fitness_metadata else None,
+        "reminder_enabled": task_data.reminder_enabled,
+        "reminder_time": task_data.reminder_time,
+        "order": task_data.order
+    }
+    
+    result = await db.tasks.insert_one(task_dict)
+    task_dict["_id"] = result.inserted_id
+    
+    logger.info(f"Created task {result.inserted_id} for user {current_user['_id']}")
+    
+    return TaskResponse(
+        id=str(task_dict["_id"]),
+        user_id=task_dict["user_id"],
+        title=task_dict["title"],
+        description=task_dict["description"],
+        completed=task_dict["completed"],
+        priority=task_dict["priority"],
+        status=task_dict["status"],
+        created_at=task_dict["created_at"],
+        updated_at=task_dict["updated_at"],
+        due_date=task_dict["due_date"],
+        completed_at=task_dict["completed_at"],
+        category=task_dict["category"],
+        tags=task_dict["tags"],
+        is_recurring=task_dict["is_recurring"],
+        recurrence_pattern=task_dict["recurrence_pattern"],
+        recurrence_days=task_dict["recurrence_days"],
+        subtasks=[Subtask(**s) for s in task_dict["subtasks"]],
+        linked_to_fitness=task_dict["linked_to_fitness"],
+        fitness_link_type=task_dict["fitness_link_type"],
+        fitness_metadata=FitnessMetadata(**task_dict["fitness_metadata"]) if task_dict["fitness_metadata"] else None,
+        reminder_enabled=task_dict["reminder_enabled"],
+        reminder_time=task_dict["reminder_time"],
+        order=task_dict["order"]
+    )
+
+@api_router.get("/tasks", response_model=List[TaskResponse])
+async def get_tasks(
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    category: Optional[str] = None,
+    tags: Optional[str] = None,
+    completed: Optional[bool] = None,
+    overdue: Optional[bool] = None,
+    due_today: Optional[bool] = None,
+    due_this_week: Optional[bool] = None,
+    linked_to_fitness: Optional[bool] = None,
+    search: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get tasks with advanced filtering"""
+    # Build query
+    query = {"user_id": str(current_user["_id"])}
+    
+    # Apply filters
+    if status:
+        query["status"] = status
+    
+    if priority:
+        query["priority"] = priority
+    
+    if category:
+        query["category"] = category
+    
+    if tags:
+        # Support multiple tags separated by comma
+        tag_list = [t.strip() for t in tags.split(",")]
+        query["tags"] = {"$in": tag_list}
+    
+    if completed is not None:
+        query["completed"] = completed
+    
+    if linked_to_fitness is not None:
+        query["linked_to_fitness"] = linked_to_fitness
+    
+    # Date filters
+    now = datetime.utcnow()
+    
+    if overdue:
+        query["due_date"] = {"$lt": now, "$ne": None}
+        query["completed"] = False
+    
+    if due_today:
+        start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_day = start_of_day + timedelta(days=1)
+        query["due_date"] = {"$gte": start_of_day, "$lt": end_of_day}
+    
+    if due_this_week:
+        start_of_week = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_week = start_of_week + timedelta(days=7)
+        query["due_date"] = {"$gte": start_of_week, "$lt": end_of_week}
+    
+    # Search in title and description
+    if search:
+        query["$or"] = [
+            {"title": {"$regex": search, "$options": "i"}},
+            {"description": {"$regex": search, "$options": "i"}}
+        ]
+    
+    logger.info(f"Query filters: {query}")
+    
+    tasks = await db.tasks.find(query).sort("order", 1).to_list(1000)
+    
+    result = []
+    for task in tasks:
+        result.append(TaskResponse(
+            id=str(task["_id"]),
+            user_id=task["user_id"],
+            title=task["title"],
+            description=task.get("description"),
+            completed=task.get("completed", False),
+            priority=task.get("priority", "medium"),
+            status=task.get("status", "todo"),
+            created_at=task["created_at"],
+            updated_at=task["updated_at"],
+            due_date=task.get("due_date"),
+            completed_at=task.get("completed_at"),
+            category=task.get("category"),
+            tags=task.get("tags", []),
+            is_recurring=task.get("is_recurring", False),
+            recurrence_pattern=task.get("recurrence_pattern"),
+            recurrence_days=task.get("recurrence_days", []),
+            subtasks=[Subtask(**s) for s in task.get("subtasks", [])],
+            linked_to_fitness=task.get("linked_to_fitness", False),
+            fitness_link_type=task.get("fitness_link_type"),
+            fitness_metadata=FitnessMetadata(**task["fitness_metadata"]) if task.get("fitness_metadata") else None,
+            reminder_enabled=task.get("reminder_enabled", False),
+            reminder_time=task.get("reminder_time"),
+            order=task.get("order", 0)
+        ))
+    
+    return result
+
+# Task stats endpoint - MUST be before /tasks/{task_id} to avoid route conflict
+@api_router.get("/tasks/stats")
+async def get_task_stats(current_user: dict = Depends(get_current_user)):
+    """Get task statistics for current user"""
+    user_id = str(current_user["_id"])
+    
+    # Total tasks
+    total_tasks = await db.tasks.count_documents({"user_id": user_id})
+    
+    # Completed tasks
+    completed_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed": True
+    })
+    
+    # Tasks by priority
+    urgent_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "priority": "urgent",
+        "completed": False
+    })
+    high_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "priority": "high",
+        "completed": False
+    })
+    medium_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "priority": "medium",
+        "completed": False
+    })
+    low_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "priority": "low",
+        "completed": False
+    })
+    
+    # Tasks by status
+    todo_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "status": "todo"
+    })
+    in_progress_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "status": "in_progress"
+    })
+    
+    # Overdue tasks
+    now = datetime.utcnow()
+    overdue_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed": False,
+        "due_date": {"$lt": now, "$ne": None}
+    })
+    
+    # Due today
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end_of_day = start_of_day + timedelta(days=1)
+    due_today = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed": False,
+        "due_date": {"$gte": start_of_day, "$lt": end_of_day}
+    })
+    
+    # Completed today
+    completed_today = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed_at": {"$gte": start_of_day, "$lt": end_of_day}
+    })
+    
+    # Completed this week
+    start_of_week = now - timedelta(days=7)
+    completed_this_week = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed_at": {"$gte": start_of_week}
+    })
+    
+    # Completed this month
+    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    completed_this_month = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed_at": {"$gte": start_of_month}
+    })
+    
+    # Fitness tasks
+    fitness_tasks = await db.tasks.count_documents({
+        "user_id": user_id,
+        "linked_to_fitness": True
+    })
+    fitness_tasks_completed = await db.tasks.count_documents({
+        "user_id": user_id,
+        "linked_to_fitness": True,
+        "completed": True
+    })
+    
+    # Completion rate
+    completion_rate = (completed_tasks / total_tasks * 100) if total_tasks > 0 else 0
+    
+    # Task streak (days in a row completing at least 1 task)
+    # Start from yesterday and go backwards
+    task_streak = 0
+    check_date = (now - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    
+    # Check if user completed task today first
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_completed = await db.tasks.count_documents({
+        "user_id": user_id,
+        "completed_at": {"$gte": today_start}
+    })
+    
+    if today_completed > 0:
+        task_streak = 1
+    
+    # Check previous days
+    for _ in range(364):  # Max 365 days total including today
+        next_day = check_date + timedelta(days=1)
+        daily_completed = await db.tasks.count_documents({
+            "user_id": user_id,
+            "completed_at": {"$gte": check_date, "$lt": next_day}
+        })
+        if daily_completed > 0:
+            task_streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+    
+    return {
+        "total_tasks": total_tasks,
+        "completed_tasks": completed_tasks,
+        "pending_tasks": total_tasks - completed_tasks,
+        "completion_rate": round(completion_rate, 1),
+        "by_priority": {
+            "urgent": urgent_tasks,
+            "high": high_tasks,
+            "medium": medium_tasks,
+            "low": low_tasks
+        },
+        "by_status": {
+            "todo": todo_tasks,
+            "in_progress": in_progress_tasks,
+            "completed": completed_tasks
+        },
+        "overdue_tasks": overdue_tasks,
+        "due_today": due_today,
+        "completed_today": completed_today,
+        "completed_this_week": completed_this_week,
+        "completed_this_month": completed_this_month,
+        "fitness_tasks": {
+            "total": fitness_tasks,
+            "completed": fitness_tasks_completed,
+            "pending": fitness_tasks - fitness_tasks_completed
+        },
+        "task_streak_days": task_streak
+    }
+
+# Fitness integration endpoints
+@api_router.get("/tasks/fitness-suggestions")
+async def get_fitness_suggestions(current_user: dict = Depends(get_current_user)):
+    """Get AI-powered fitness task suggestions based on user's progress"""
+    user_id = str(current_user["_id"])
+    suggestions = []
+    
+    # Get user stats
+    total_workouts = await db.workout_sessions.count_documents({
+        "user_id": user_id,
+        "is_completed": True
+    })
+    
+    # Count workouts this week
+    now = datetime.utcnow()
+    start_of_week = now - timedelta(days=7)
+    workouts_this_week = await db.workout_sessions.count_documents({
+        "user_id": user_id,
+        "is_completed": True,
+        "session_date": {"$gte": start_of_week}
+    })
+    
+    current_streak = current_user.get("current_streak_days", 0)
+    total_prs = await db.personal_records.count_documents({"user_id": user_id})
+    
+    # Get unlocked achievements
+    unlocked_achievements = await db.user_achievements.count_documents({"user_id": user_id})
+    total_achievements = await db.achievements.count_documents({})
+    
+    # Suggestion 1: Weekly workout goal
+    if workouts_this_week < 3:
+        suggestions.append({
+            "id": "workout_weekly_goal",
+            "title": f"Completar {3 - workouts_this_week} workout{'s' if (3-workouts_this_week) > 1 else ''} más esta semana",
+            "description": f"Te faltan {3 - workouts_this_week} entrenamientos para alcanzar tu meta semanal de 3 workouts",
+            "priority": "high",
+            "category": "fitness",
+            "linked_to_fitness": True,
+            "fitness_link_type": "workout_goal",
+            "fitness_metadata": {
+                "workouts_per_week": 3,
+                "current_progress": workouts_this_week
+            },
+            "icon": "💪"
+        })
+    
+    # Suggestion 2: Maintain streak
+    if current_streak > 0 and current_streak < 7:
+        suggestions.append({
+            "id": "maintain_streak",
+            "title": f"Mantener racha de {current_streak} días",
+            "description": f"¡Vas {current_streak} días seguidos! Completa un workout hoy para mantener tu racha",
+            "priority": "urgent",
+            "category": "fitness",
+            "linked_to_fitness": True,
+            "fitness_link_type": "workout_goal",
+            "fitness_metadata": {
+                "workouts_per_week": 7,
+                "streak_goal": True
+            },
+            "icon": "🔥"
+        })
+    
+    # Suggestion 3: Break personal record
+    recent_prs = await db.personal_records.find({
+        "user_id": user_id
+    }).sort("achieved_at", -1).limit(3).to_list(3)
+    
+    for pr in recent_prs:
+        exercise = await db.exercises.find_one({"_id": ObjectId(pr["exercise_id"])})
+        if exercise and pr["pr_type"] == "MAX_WEIGHT":
+            target_weight = pr["value"] * 1.025  # 2.5% increase
+            suggestions.append({
+                "id": f"pr_goal_{pr['exercise_id']}",
+                "title": f"Superar PR en {exercise['name']}",
+                "description": f"Tu récord actual es {pr['value']}kg. Intenta alcanzar {round(target_weight, 1)}kg",
+                "priority": "medium",
+                "category": "fitness",
+                "linked_to_fitness": True,
+                "fitness_link_type": "pr_goal",
+                "fitness_metadata": {
+                    "exercise_id": pr["exercise_id"],
+                    "target_weight": round(target_weight, 1),
+                    "current_pr": pr["value"]
+                },
+                "icon": "🏆"
+            })
+            break  # Only suggest one PR goal
+    
+    # Suggestion 4: Unlock achievements
+    if unlocked_achievements < total_achievements:
+        pending_achievements = total_achievements - unlocked_achievements
+        
+        # Get next unlockable achievement
+        all_achievements = await db.achievements.find({}).to_list(100)
+        user_achievement_ids = [
+            ua["achievement_id"] 
+            for ua in await db.user_achievements.find({"user_id": user_id}).to_list(100)
+        ]
+        
+        for achievement in all_achievements:
+            if str(achievement["_id"]) not in user_achievement_ids:
+                criteria = achievement.get("criteria", {})
+                
+                # Check if it's close to unlocking
+                if "workouts_completed" in criteria:
+                    if total_workouts >= criteria["workouts_completed"] * 0.8:
+                        suggestions.append({
+                            "id": f"achievement_{achievement['code']}",
+                            "title": f"Desbloquear '{achievement['name']}'",
+                            "description": f"{achievement['description']} ({total_workouts}/{criteria['workouts_completed']} workouts)",
+                            "priority": "low",
+                            "category": "fitness",
+                            "linked_to_fitness": True,
+                            "fitness_link_type": "achievement_goal",
+                            "fitness_metadata": {
+                                "achievement_code": achievement["code"],
+                                "current_progress": total_workouts,
+                                "target": criteria["workouts_completed"]
+                            },
+                            "icon": "🎖️"
+                        })
+                        break
+    
+    # Suggestion 5: Try new routine
+    user_routines = await db.routines.count_documents({"user_id": user_id})
+    if user_routines < 3:
+        suggestions.append({
+            "id": "create_routine",
+            "title": "Crear una nueva rutina de entrenamiento",
+            "description": "Organiza tus workouts creando una rutina personalizada",
+            "priority": "low",
+            "category": "fitness",
+            "linked_to_fitness": True,
+            "fitness_link_type": "routine_reminder",
+            "fitness_metadata": {},
+            "icon": "📋"
+        })
+    
+    return {
+        "suggestions": suggestions[:5],  # Max 5 suggestions
+        "user_stats": {
+            "total_workouts": total_workouts,
+            "workouts_this_week": workouts_this_week,
+            "current_streak": current_streak,
+            "total_prs": total_prs,
+            "unlocked_achievements": unlocked_achievements,
+            "total_achievements": total_achievements
+        }
+    }
+
+@api_router.post("/tasks/check-fitness-progress")
+async def check_fitness_task_progress(current_user: dict = Depends(get_current_user)):
+    """Check and auto-update progress for fitness-linked tasks"""
+    user_id = str(current_user["_id"])
+    updated_tasks = []
+    
+    # Get all fitness-linked tasks that are not completed
+    fitness_tasks = await db.tasks.find({
+        "user_id": user_id,
+        "linked_to_fitness": True,
+        "completed": False
+    }).to_list(100)
+    
+    now = datetime.utcnow()
+    
+    # Calculate start of CURRENT week (Monday 00:00:00)
+    days_since_monday = now.weekday()  # Monday = 0, Sunday = 6
+    start_of_week = (now - timedelta(days=days_since_monday)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    
+    logger.info(f"Checking fitness progress for {len(fitness_tasks)} tasks")
+    
+    for task in fitness_tasks:
+        fitness_type = task.get("fitness_link_type")
+        metadata = task.get("fitness_metadata", {})
+        should_complete = False
+        
+        # IMPORTANT: Only auto-complete if task is not overdue or due date hasn't passed yet
+        task_due_date = task.get("due_date")
+        if task_due_date:
+            # Convert to datetime if it's a string
+            if isinstance(task_due_date, str):
+                task_due_date = datetime.fromisoformat(task_due_date.replace('Z', '+00:00'))
+            
+            # Only auto-complete if we're still within the due date (same day or before)
+            end_of_due_day = task_due_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            if now > end_of_due_day:
+                # Task is overdue, don't auto-complete
+                logger.info(f"Task {task['_id']} is overdue ({task_due_date}), skipping")
+                continue
+        
+        if fitness_type == "workout_goal":
+            # Check if workout goal is met
+            target_workouts = metadata.get("workouts_per_week")
+            
+            # Validate metadata
+            if not target_workouts or target_workouts <= 0:
+                logger.warning(f"Task {task['_id']} has invalid workouts_per_week: {target_workouts}")
+                continue
+            
+            # IMPORTANT: Only count workouts AFTER the task was created
+            task_created_at = task.get("created_at")
+            
+            # Build query to only count workouts after task creation AND this week
+            workout_query = {
+                "user_id": user_id,
+                "is_completed": True,
+                "session_date": {"$gte": max(start_of_week, task_created_at)}  # Use the later date
+            }
+            
+            workouts = await db.workout_sessions.find(workout_query).to_list(100)
+            
+            workouts_this_week = len(workouts)
+            
+            if workouts_this_week >= target_workouts:
+                should_complete = True
+        
+        elif fitness_type == "pr_goal":
+            # Check if PR goal is met
+            exercise_id = metadata.get("exercise_id")
+            target_weight = metadata.get("target_weight")
+            
+            # Validate metadata
+            if not exercise_id or not target_weight or target_weight <= 0:
+                logger.warning(f"Task {task['_id']} has invalid PR metadata: exercise={exercise_id}, weight={target_weight}")
+                continue
+            
+            current_pr = await db.personal_records.find_one({
+                "user_id": user_id,
+                "exercise_id": exercise_id,
+                "pr_type": "MAX_WEIGHT"
+            })
+            
+            if current_pr:
+                current_weight = current_pr.get("value", 0)
+                logger.info(f"Task {task['_id']}: PR check - current: {current_weight}kg, target: {target_weight}kg")
+                
+                if current_weight >= target_weight:
+                    logger.info(f"Task {task['_id']}: PR goal achieved! Auto-completing.")
+                    should_complete = True
+            else:
+                logger.info(f"Task {task['_id']}: No PR found for exercise {exercise_id}, cannot auto-complete yet")
+        
+        elif fitness_type == "achievement_goal":
+            # Check if achievement is unlocked
+            achievement_code = metadata.get("achievement_code")
+            
+            # Validate metadata
+            if not achievement_code:
+                logger.warning(f"Task {task['_id']} has no achievement_code")
+                continue
+            
+            achievement = await db.achievements.find_one({"code": achievement_code})
+            if achievement:
+                user_achievement = await db.user_achievements.find_one({
+                    "user_id": user_id,
+                    "achievement_id": str(achievement["_id"])
+                })
+                
+                if user_achievement:
+                    logger.info(f"Task {task['_id']}: Achievement {achievement_code} unlocked")
+                    should_complete = True
+        
+        # Auto-complete if goal is met
+        if should_complete:
+            logger.info(f"Auto-completing task {task['_id']} - {task['title']} (Type: {fitness_type})")
+            await db.tasks.update_one(
+                {"_id": task["_id"]},
+                {
+                    "$set": {
+                        "completed": True,
+                        "status": "completed",
+                        "completed_at": now,
+                        "updated_at": now
+                    }
+                }
+            )
+            
+            updated_tasks.append({
+                "task_id": str(task["_id"]),
+                "title": task["title"],
+                "auto_completed": True
+            })
+    
+    return {
+        "updated_tasks": updated_tasks,
+        "count": len(updated_tasks),
+        "message": f"Auto-completed {len(updated_tasks)} fitness task(s)"
+    }
+
+@api_router.get("/tasks/{task_id}", response_model=TaskResponse)
+async def get_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Get a specific task"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return TaskResponse(
+        id=str(task["_id"]),
+        user_id=task["user_id"],
+        title=task["title"],
+        description=task.get("description"),
+        completed=task.get("completed", False),
+        priority=task.get("priority", "medium"),
+        status=task.get("status", "todo"),
+        created_at=task["created_at"],
+        updated_at=task["updated_at"],
+        due_date=task.get("due_date"),
+        completed_at=task.get("completed_at"),
+        category=task.get("category"),
+        tags=task.get("tags", []),
+        is_recurring=task.get("is_recurring", False),
+        recurrence_pattern=task.get("recurrence_pattern"),
+        recurrence_days=task.get("recurrence_days", []),
+        subtasks=[Subtask(**s) for s in task.get("subtasks", [])],
+        linked_to_fitness=task.get("linked_to_fitness", False),
+        fitness_link_type=task.get("fitness_link_type"),
+        fitness_metadata=FitnessMetadata(**task["fitness_metadata"]) if task.get("fitness_metadata") else None,
+        reminder_enabled=task.get("reminder_enabled", False),
+        reminder_time=task.get("reminder_time"),
+        order=task.get("order", 0)
+    )
+
+@api_router.put("/tasks/{task_id}", response_model=TaskResponse)
+async def update_task(
+    task_id: str,
+    task_data: TaskUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Update a task"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Build update dict with only provided fields
+    update_dict = {"updated_at": datetime.utcnow()}
+    
+    if task_data.title is not None:
+        update_dict["title"] = task_data.title
+    if task_data.description is not None:
+        update_dict["description"] = task_data.description
+    if task_data.priority is not None:
+        update_dict["priority"] = task_data.priority
+    if task_data.status is not None:
+        update_dict["status"] = task_data.status
+    if task_data.due_date is not None:
+        update_dict["due_date"] = task_data.due_date
+    if task_data.category is not None:
+        update_dict["category"] = task_data.category
+    if task_data.tags is not None:
+        update_dict["tags"] = task_data.tags
+    if task_data.is_recurring is not None:
+        update_dict["is_recurring"] = task_data.is_recurring
+    if task_data.recurrence_pattern is not None:
+        update_dict["recurrence_pattern"] = task_data.recurrence_pattern
+    if task_data.recurrence_days is not None:
+        update_dict["recurrence_days"] = task_data.recurrence_days
+    if task_data.subtasks is not None:
+        update_dict["subtasks"] = [s.dict() for s in task_data.subtasks]
+    if task_data.linked_to_fitness is not None:
+        update_dict["linked_to_fitness"] = task_data.linked_to_fitness
+    if task_data.fitness_link_type is not None:
+        update_dict["fitness_link_type"] = task_data.fitness_link_type
+    if task_data.fitness_metadata is not None:
+        update_dict["fitness_metadata"] = task_data.fitness_metadata.dict()
+    if task_data.reminder_enabled is not None:
+        update_dict["reminder_enabled"] = task_data.reminder_enabled
+    if task_data.reminder_time is not None:
+        update_dict["reminder_time"] = task_data.reminder_time
+    if task_data.order is not None:
+        update_dict["order"] = task_data.order
+    
+    await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {"$set": update_dict}
+    )
+    
+    logger.info(f"Updated task {task_id}")
+    
+    return await get_task(task_id, current_user)
+
+@api_router.delete("/tasks/{task_id}")
+async def delete_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Delete a task"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    await db.tasks.delete_one({"_id": ObjectId(task_id)})
+    
+    logger.info(f"Deleted task {task_id}")
+    
+    return {"success": True, "message": "Task deleted successfully"}
+
+@api_router.patch("/tasks/{task_id}/toggle", response_model=TaskResponse)
+async def toggle_task(task_id: str, current_user: dict = Depends(get_current_user)):
+    """Toggle task completed status"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    new_completed = not task.get("completed", False)
+    new_status = "completed" if new_completed else "todo"
+    completed_at = datetime.utcnow() if new_completed else None
+    
+    await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {
+            "$set": {
+                "completed": new_completed,
+                "status": new_status,
+                "completed_at": completed_at,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    logger.info(f"Toggled task {task_id} to completed={new_completed}")
+    
+    return await get_task(task_id, current_user)
+
+# Subtasks endpoints
+@api_router.post("/tasks/{task_id}/subtasks")
+async def add_subtask(
+    task_id: str,
+    subtask_data: SubtaskCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """Add a subtask to a task"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Generate new subtask
+    new_subtask = {
+        "id": str(uuid.uuid4()),
+        "title": subtask_data.title,
+        "completed": False
+    }
+    
+    # Add to subtasks array
+    await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {
+            "$push": {"subtasks": new_subtask},
+            "$set": {"updated_at": datetime.utcnow()}
+        }
+    )
+    
+    logger.info(f"Added subtask to task {task_id}")
+    
+    return new_subtask
+
+@api_router.patch("/tasks/{task_id}/subtasks/{subtask_id}/toggle")
+async def toggle_subtask(
+    task_id: str,
+    subtask_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Toggle subtask completed status"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    subtasks = task.get("subtasks", [])
+    subtask_found = False
+    
+    for subtask in subtasks:
+        if subtask["id"] == subtask_id:
+            subtask["completed"] = not subtask.get("completed", False)
+            subtask_found = True
+            break
+    
+    if not subtask_found:
+        raise HTTPException(status_code=404, detail="Subtask not found")
+    
+    await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {
+            "$set": {
+                "subtasks": subtasks,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    logger.info(f"Toggled subtask {subtask_id} in task {task_id}")
+    
+    return {"success": True, "subtasks": subtasks}
+
+@api_router.delete("/tasks/{task_id}/subtasks/{subtask_id}")
+async def delete_subtask(
+    task_id: str,
+    subtask_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete a subtask"""
+    task = await db.tasks.find_one({
+        "_id": ObjectId(task_id),
+        "user_id": str(current_user["_id"])
+    })
+    
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Remove subtask from array
+    await db.tasks.update_one(
+        {"_id": ObjectId(task_id)},
+        {
+            "$pull": {"subtasks": {"id": subtask_id}},
+            "$set": {"updated_at": datetime.utcnow()}
+        }
+    )
+    
+    logger.info(f"Deleted subtask {subtask_id} from task {task_id}")
+    
+    return {"success": True, "message": "Subtask deleted successfully"}
+
 # ==================== ROOT ====================
+
+# DEBUG ENDPOINTS - Uncomment for development/testing
+# @api_router.get("/debug/workout-count")
+# async def count_workouts(current_user: dict = Depends(get_current_user)):
+#     """Check how many workouts exist this week"""
+#     # Implementation commented out - see git history
+
+# @api_router.delete("/debug/clear-workouts")
+# async def clear_all_workouts(current_user: dict = Depends(get_current_user)):
+#     """🚨 DEBUG: Delete all workout sessions for current user"""
+#     # Implementation commented out - see git history
 
 @api_router.get("/")
 async def root():
@@ -1363,7 +2714,21 @@ async def root():
 
 @api_router.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    """Health check endpoint with MongoDB connection verification"""
+    try:
+        # Test MongoDB connection
+        await db.command('ping')
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "message": "API and database are operational"
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Service unavailable: Database connection failed - {str(e)}"
+        )
 
 # Include the router
 app.include_router(api_router)
@@ -1376,6 +2741,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup_db_client():
+    """Verify database connection on startup"""
+    try:
+        await db.command('ping')
+        logger.info(f"Successfully connected to MongoDB at {MONGO_URL}")
+        logger.info(f"Using database: {DB_NAME}")
+    except Exception as e:
+        logger.error(f"Failed to connect to MongoDB: {str(e)}")
+        logger.error("Please ensure MongoDB is running and MONGO_URL is correct")
+        raise RuntimeError(f"Database connection failed: {str(e)}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
