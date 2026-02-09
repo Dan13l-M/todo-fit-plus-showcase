@@ -78,7 +78,49 @@ agenthub/agents/youtube/db
 .cache/
 
 # Mobile development
-android-sdk/ -e 
-# Environment files
+android-sdk/
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+
+# Environment files - CRÍTICO PARA PRODUCCIÓN
 *.env
 *.env.*
+.env.local
+.env.production
+.env.development
+!.env.example
+
+# MongoDB y Secrets
+*.db
+*.sqlite
+*.mongodb
+mongo_data/
+
+# Certificados y Keys
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
+credentials/
+
+# Backend sensitive
+backend/.env
+backend/config.json
+backend/secrets.py
+
+# Frontend sensitive  
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Logs sensibles
+*.log
+logs/
